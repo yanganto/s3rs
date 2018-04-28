@@ -1,14 +1,16 @@
-extern crate toml;
-
-#[macro_use]
-extern crate serde_derive;
-
 use std::io;
 use std::io::{Read, Write, BufReader, BufRead};
 use std::fs::{File, OpenOptions};
 use std::str::FromStr;
 
-#[derive(Debug, Deserialize)]
+extern crate toml;
+#[macro_use]
+extern crate serde_derive;
+extern crate interactor; 
+use interactor::read_from_tty; 
+extern crate reqwest;
+
+#[derive(Debug, Clone, Deserialize)]
 struct CredentialConfig {
     host: String,
     user: Option<String>,
@@ -20,21 +22,16 @@ struct CredentialConfig {
 struct Config {
     credential: Option<Vec<CredentialConfig>>
 }
-impl Config {
-    fn gen_selecitons_and_values(self) -> (Vec<String>, Vec<(String, String)>) {
+impl <'a> Config {
+    fn gen_selecitons(&'a self) -> Vec<String>{
         let mut display_list = Vec::new();
-        let mut value_list = Vec::new();
-        for c in self.credential.unwrap().into_iter(){
-            let mut option = String::from(c.host);
-            option.push('|');
-            option.push_str(c.user.unwrap_or(String::from("")).as_str());
-            option.push('|');
-            option.push_str(c.access_key.as_str());
+        let credential = &self.credential.clone().unwrap();
+        for cre in credential.into_iter(){
+            let c = cre.clone();
+            let mut option = String::from(format!("{} {} ({})", c.host, c.user.unwrap_or(String::from("")), c.access_key));
             display_list.push(option);
-            value_list.push((c.access_key, c.secrete_key));
         }
-        (display_list, value_list)
-        // self.credential.unwrap().into_iter().map(|x|x.access_key).collect()
+        display_list
     }
 }
 
@@ -73,14 +70,44 @@ fn main() {
     let config:Config = toml::from_str(config_contents.as_str()).unwrap();
 
 
-    let config_option_and_value: (Vec<String>, Vec<(String, String)>) = config.gen_selecitons_and_values();
+    let config_option: Vec<String> = config.gen_selecitons();
 
-    // println!("{:?}", config_option_and_value.0);
-    let chosen_int = my_pick_from_list_internal(&config_option_and_value.0, "Selection: ").unwrap();
+    let chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
 
-    println!("credential chosen, you chose '{}'!!", config_option_and_value.1[chosen_int].1);
-    // println!("{:?}", );
 
-    //println!("credential chosen, you chose '{:?}'!!", config.credential.unwrap()[0].user);
+    // save the credential user this time 
+    let credential = &config.credential.unwrap()[chosen_int];
+    println!("host: {}", credential.host);
+    println!("access key: {}", credential.access_key);
+    println!("secrete key: {}", credential.secrete_key);
+    println!("enter command, help for usage or exit for quit");
 
+    let mut raw_input;
+    let mut command = String::new(); 
+    let mut res;
+    while command != "exit" {
+        raw_input = read_from_tty(|buf, b, tty| {
+            tty.write(&[b]);
+        }, false, false).unwrap();
+        command = String::from_utf8(raw_input).unwrap();
+        println!("");
+        println!("do command: {:?}", command);
+        if command.starts_with("la"){
+            // try to list bucket first
+            println!("try to list bucket first");
+
+            // XXX
+            println!("GET https://www.rust-lang.org");
+            res = reqwest::get("https://www.rust-lang.org/en-US/").unwrap();
+
+
+            println!("Status: {}", res.status());
+            println!("Headers:\n{}", res.headers());
+
+            // copy the response body directly to stdout
+            let _ = std::io::copy(&mut res, &mut std::io::stdout()).unwrap();
+
+            println!("\n\nDone.");
+        }
+    }
 }

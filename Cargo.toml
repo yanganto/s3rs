@@ -8,4 +8,4 @@ interactor = "0.1.1"
 toml = "0.4"
 serde = "1.0.43"
 serde_derive = "1.0.43"
-
+reqwest = "0.8.5"
