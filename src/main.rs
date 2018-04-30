@@ -128,13 +128,11 @@ fn main() {
             // XXX: Implement AWS4 auth here
             let mut query = String::from_str("http://").unwrap();
             query.push_str(credential.host.as_str());
-            // query.push_str("www.rust-lang.org");
             // query.push_str("?format=json");
 
             let mut headers = header::Headers::new();
 
             let utc: DateTime<Utc> = Utc::now();   
-            // let utc: DateTime<Utc> = Utc.ymd(2018, 04, 29).and_hms(4, 45, 1);
             header! { (XAMZDate, "x-amz-date") => [String] }
             headers.set(XAMZDate(utc.to_rfc2822()));
 
