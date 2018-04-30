@@ -7,18 +7,37 @@ use rustc_serialize::hex::ToHex;
 use base64::encode;
 use url::form_urlencoded;
 
-fn aws_v4_canonical_request(http_method: &str, uri:&str, query_string:&str, headers:&Vec<String>, signed_headers:&str, payload_hash:&str) -> String {
+fn canonical_query_string(query_strings:&mut Vec<(&str, &str)>) -> String {
+    query_strings.sort_by_key(|a| a.0);
+    let mut encoded = form_urlencoded::Serializer::new(String::new());
+    for q in query_strings{
+        encoded.append_pair(q.0, q.1);
+    }
+    encoded.finish()
+}
+
+fn canonical_headers(headers:&mut Vec<(&str, &str)>) -> String {
+    let mut output = String::new();
+    headers.sort_by(|a, b| a.0.to_lowercase().as_str().cmp(b.0.to_lowercase().as_str()));
+    for h in headers {
+        output.push_str(h.0.to_lowercase().as_str());
+        output.push(':');
+        output.push_str(h.1.trim());
+        output.push('\n');
+    }
+    output
+}
+
+
+fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, signed_headers:&str, payload_hash:&str) -> String {
     let mut input = String::new();
     input.push_str(http_method);
     input.push_str("\n");
     input.push_str(uri);
     input.push_str("\n");
-    input.push_str(query_string);
+    input.push_str(canonical_query_string(query_strings).as_str());
     input.push_str("\n");
-    for h in headers {
-        input.push_str(h.as_str());
-        input.push_str("\n");
-    }
+    input.push_str(canonical_headers(headers).as_str());
     input.push_str("\n");
     input.push_str(signed_headers);
     input.push_str("\n");
@@ -29,13 +48,13 @@ fn aws_v4_canonical_request(http_method: &str, uri:&str, query_string:&str, head
     sha.result_str()
 }
 
-pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str, query_string:&str, headers:&Vec<String>, signed_headers:&str, payload_hash:&str) -> String {
+pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, signed_headers:&str, payload_hash:&str) -> String {
     let mut string_to_signed = String::from_str("AWS4-HMAC-SHA256\n").unwrap();
     string_to_signed.push_str("20150830T123600Z");
     string_to_signed.push_str("\n");
     string_to_signed.push_str("20150830/us-east-1/iam/aws4_request");
     string_to_signed.push_str("\n");
-    string_to_signed.push_str(aws_v4_canonical_request(http_method, uri, query_string, headers, signed_headers, payload_hash).as_str());
+    string_to_signed.push_str(aws_v4_canonical_request(http_method, uri, query_strings, headers, signed_headers, payload_hash).as_str());
     return  string_to_signed
 }
 
@@ -80,12 +99,7 @@ pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query
     string_to_signed.push_str("\n");
     string_to_signed.push_str(uri);
     string_to_signed.push_str("\n");
-    query_strings.sort_by_key(|a| a.0);
-    let mut encoded = form_urlencoded::Serializer::new(String::new());
-    for q in query_strings{
-        encoded.append_pair(q.0, q.1);
-    }
-    string_to_signed.push_str(encoded.finish().as_str());
+    string_to_signed.push_str(canonical_query_string(query_strings).as_str());
     return  string_to_signed
 }
 
@@ -148,16 +162,22 @@ mod tests {
 
     #[test]
     fn test_aws_v4_get_string_to_signed() {
-        let headers = vec![
-            String::from_str("content-type:application/x-www-form-urlencoded; charset=utf-8").unwrap(),
-            String::from_str("host:iam.amazonaws.com").unwrap(),
-            String::from_str("x-amz-date:20150830T123600Z").unwrap()];
+        let mut headers = vec![
+            ("X-AMZ-Date", "20150830T123600Z"),
+            ("Host", "iam.amazonaws.com"),
+            ("Content-Type", "application/x-www-form-urlencoded; charset=utf-8")
+        ];
+
+        let mut query_strings = vec![
+            ("Version", "2010-05-08"),
+            ("Action", "ListUsers")
+        ];
 
         let string_need_signed = aws_v4_get_string_to_signed(
                 "GET",
                 "/", 
-                "Action=ListUsers&Version=2010-05-08", 
-                &headers,
+                &mut query_strings, 
+                &mut headers,
                 "content-type;host;x-amz-date", 
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 
