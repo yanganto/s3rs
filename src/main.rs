@@ -12,6 +12,7 @@ extern crate sha2;
 extern crate base64;
 extern crate crypto;
 extern crate rustc_serialize;
+extern crate url;
 
 
 pub mod aws;
@@ -23,8 +24,6 @@ use std::str;
 use std::str::FromStr;
 use std::io::stdout;
 use reqwest::header;
-use hyper::header::Headers;
-use std::time::SystemTime;
 use chrono::prelude::*;
 
 
@@ -113,10 +112,10 @@ fn main() {
     let mut res;
     while command != "exit" {
         print!("> ");
-        stdout().flush();
+        stdout().flush().expect("Could not flush stdout");
 
         raw_input = read_from_tty(|_buf, b, tty| {
-            tty.write(&[b]);
+            tty.write(&[b]).expect("Could not write tty");
         }, false, false).unwrap();
         command = String::from_utf8(raw_input).unwrap();
         println!("");
@@ -174,6 +173,6 @@ fn main() {
             println!("command {} not found, help for usage or exit for quit", command);
         }
         println!("");
-        stdout().flush();
+        stdout().flush().expect("Could not flush stdout");
     }
 }

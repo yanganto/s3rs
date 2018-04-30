@@ -1,0 +1,17 @@
+[[credential]]
+host = "10.1.12.243"
+user = "admin"
+access_key = "L2D11MY86GEVA6I4DX2S"
+secrete_key = "MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg"
+
+[[credential]]
+host = "10.1.12.243"
+user = "yanganto"
+access_key = "GC6ZTG7H0I3BAQH27EJO"
+secrete_key = "CNdDO0yDSuOhz1esBTt0rCoNx6Frt0DPP0Iv6iQB"
+
+[[credential]]
+host = "10.1.12.243"
+user = "yanganto:subuser"
+access_key = "PJKIGE4B9PTVBKG3C2AA"
+secrete_key = "k5JXya2mbRtgC5rx9G8w0pNjPsaf98KlDiBzUflP"
