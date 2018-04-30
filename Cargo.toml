@@ -17,4 +17,6 @@ hmac = "0.4.2"
 sha2 = "0.6.0"
 base64 = "0.6.0"
 rustc-serialize = "0.3"
+hmac-sha1 = "0.1.3"
+
 

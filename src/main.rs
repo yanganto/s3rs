@@ -14,6 +14,8 @@ extern crate crypto;
 extern crate rustc_serialize;
 
 
+pub mod aws;
+
 use std::io;
 use std::io::{Read, Write, BufReader, BufRead};
 use std::fs::{File, OpenOptions};
@@ -24,12 +26,6 @@ use reqwest::header;
 use hyper::header::Headers;
 use std::time::SystemTime;
 use chrono::prelude::*;
-// use sha2::{Digest, Sha256};
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use sha2::Sha256 as sha2_256;
-use hmac::{Hmac, Mac};
-use rustc_serialize::hex::ToHex;
 
 
 
@@ -81,100 +77,8 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
     Ok(idx)
 }
 
-fn v4_hash_canonical_request(http_method: &str, uri:&str, query_string:&str, headers:&Vec<String>, signed_headers:&str, payload_hash:&str) -> String {
-    let mut input = String::new();
-    input.push_str(http_method);
-    input.push_str("\n");
-    input.push_str(uri);
-    input.push_str("\n");
-    input.push_str(query_string);
-    input.push_str("\n");
-    for h in headers {
-        input.push_str(h.as_str());
-        input.push_str("\n");
-    }
-    input.push_str("\n");
-    input.push_str(signed_headers);
-    input.push_str("\n");
-    input.push_str(payload_hash);
-
-    let mut sha = Sha256::new();
-    sha.input_str(input.as_str());
-    sha.result_str()
-}
-
-fn v4_get_string_to_signed(http_method: &str, uri:&str, query_string:&str, headers:&Vec<String>, signed_headers:&str, payload_hash:&str) -> String {
-    let mut string_to_signed = String::from_str("AWS4-HMAC-SHA256\n").unwrap();
-    string_to_signed.push_str("20150830T123600Z");
-    string_to_signed.push_str("\n");
-    string_to_signed.push_str("20150830/us-east-1/iam/aws4_request");
-    string_to_signed.push_str("\n");
-    string_to_signed.push_str(v4_hash_canonical_request(http_method, uri, query_string, headers, signed_headers, payload_hash).as_str());
-    return  string_to_signed
-}
-
-
-// HMAC(HMAC(HMAC(HMAC("AWS4" + kSecret,"20150830"),"us-east-1"),"iam"),"aws4_request")
-fn v4_sign(kSecret: &str, data: &str) {
-    let mut key = String::from("AWS4");
-    key.push_str(kSecret);
-    let mut mac = Hmac::<sha2_256>::new(key.as_str().as_bytes());
-    mac.input(b"20150830");
-
-    // `result` has type `MacResult` which is a thin wrapper around array of
-    // bytes for providing constant time equality check
-    let result = mac.result();
-    // To get underlying array use `code` method, but be carefull, since
-    // incorrect use of the code value may permit timing attacks which defeat
-    // the security provided by the `MacResult`
-    let code_bytes = result.code();
-
-    let mut mac1 = Hmac::<sha2_256>::new(code_bytes);
-    mac1.input(b"us-east-1");
-    let result1 = mac1.result();
-    let code_bytes1 = result1.code();
-
-    let mut mac2 = Hmac::<sha2_256>::new(code_bytes1);
-    mac2.input(b"iam");
-    let result2 = mac2.result();
-    let code_bytes2 = result2.code();
-
-    let mut mac3 = Hmac::<sha2_256>::new(code_bytes2);
-    mac3.input(b"aws4_request");
-    let result3 = mac3.result();
-    let code_bytes3 = result3.code();
-
-    let mut mac4 = Hmac::<sha2_256>::new(code_bytes3);
-    mac4.input(data.as_bytes());
-    let result4 = mac4.result();
-    let code_bytes4 = result4.code();
-
-    println!("sig: {:?}", code_bytes4.to_hex());
-}
-
 		
 fn main() {
-
-    println!("////////// TEST AWS4  //////////");
-    let h = vec![String::from_str("content-type:application/x-www-form-urlencoded; charset=utf-8").unwrap(), 
-                String::from_str("host:iam.amazonaws.com").unwrap(), String::from_str("x-amz-date:20150830T123600Z").unwrap()];
-    let string_need_signed = v4_get_string_to_signed(
-            "GET",
-            "/", 
-            "Action=ListUsers&Version=2010-05-08", 
-            &h,
-            "content-type;host;x-amz-date", 
-            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-
-    println!("string need signed: \n{}\n", string_need_signed);
-    v4_sign("wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY", 
-          string_need_signed.as_str());
-
-    println!("5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7");
-    println!("////////////////////////////////");
-
-
-
 
     let verbose = true;
 
