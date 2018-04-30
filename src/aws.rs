@@ -27,9 +27,19 @@ fn canonical_headers(headers:&mut Vec<(&str, &str)>) -> String {
     }
     output
 }
+fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
+    let mut output = Vec::new();
+    headers.sort_by(|a, b| a.0.to_lowercase().as_str().cmp(b.0.to_lowercase().as_str()));
+    for h in headers {
+        output.push(h.0.to_lowercase());
+    }
+    output.join(";")
+}
 
 
-fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, signed_headers:&str, payload_hash:&str) -> String {
+
+
+fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload_hash:&str) -> String {
     let mut input = String::new();
     input.push_str(http_method);
     input.push_str("\n");
@@ -39,7 +49,7 @@ fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<
     input.push_str("\n");
     input.push_str(canonical_headers(headers).as_str());
     input.push_str("\n");
-    input.push_str(signed_headers);
+    input.push_str(signed_headers(headers).as_str());
     input.push_str("\n");
     input.push_str(payload_hash);
 
@@ -48,13 +58,13 @@ fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<
     sha.result_str()
 }
 
-pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, signed_headers:&str, payload_hash:&str) -> String {
+pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload_hash:&str) -> String {
     let mut string_to_signed = String::from_str("AWS4-HMAC-SHA256\n").unwrap();
     string_to_signed.push_str("20150830T123600Z");
     string_to_signed.push_str("\n");
     string_to_signed.push_str("20150830/us-east-1/iam/aws4_request");
     string_to_signed.push_str("\n");
-    string_to_signed.push_str(aws_v4_canonical_request(http_method, uri, query_strings, headers, signed_headers, payload_hash).as_str());
+    string_to_signed.push_str(aws_v4_canonical_request(http_method, uri, query_strings, headers, payload_hash).as_str());
     return  string_to_signed
 }
 
@@ -178,7 +188,6 @@ mod tests {
                 "/", 
                 &mut query_strings, 
                 &mut headers,
-                "content-type;host;x-amz-date", 
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 
         assert_eq!(
