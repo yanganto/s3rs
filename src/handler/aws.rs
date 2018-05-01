@@ -7,7 +7,7 @@ use rustc_serialize::hex::ToHex;
 use base64::encode;
 use url::form_urlencoded;
 
-fn canonical_query_string(query_strings:&mut Vec<(&str, &str)>) -> String {
+pub fn canonical_query_string(query_strings:&mut Vec<(&str, &str)>) -> String {
     query_strings.sort_by_key(|a| a.0);
     let mut encoded = form_urlencoded::Serializer::new(String::new());
     for q in query_strings{
@@ -47,8 +47,6 @@ fn hash_payload(payload: &str) -> String {
     trace!("payload request hash = {}", sha.result_str());
     sha.result_str()
 }
-
-
 
 
 fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&str) -> String {

@@ -24,14 +24,7 @@ pub trait S3 {
 
 
 impl<'a> Handler<'a>  {
-    fn aws_v4_request(&self, method: &str, uri: & str, qs: &str, payload: &str) -> Response{
-        let mut query = String::from_str("http://").unwrap();
-        query.push_str(self.host);
-        query.push_str("?format=json");
-        if qs != ""{
-            query.push('&');
-            query.push_str(qs);
-        }
+    fn aws_v4_request(&self, method: &str, uri: &str, qs: Vec<(&str, &str)>, payload: &str) -> Response{
 
         let utc: DateTime<Utc> = Utc::now();   
         header! { (XAMZDate, "x-amz-date") => [String] }
@@ -47,6 +40,13 @@ impl<'a> Handler<'a>  {
         let mut query_strings = vec![
             ("format", "json")
         ];
+        query_strings.extend(qs.iter().cloned());
+
+        let mut query = String::from_str("http://").unwrap();
+        query.push_str(self.host);
+        query.push_str(uri);
+        query.push('?');
+        query.push_str(&aws::canonical_query_string(& mut query_strings));
         let signature = 
             aws::aws_v4_sign(self.secrete_key, 
                              aws::aws_v4_get_string_to_signed(
@@ -80,7 +80,7 @@ impl<'a> Handler<'a>  {
     pub fn la(&self) -> Response{
         match self.s3_type {
             S3Type::AWS4 => {
-                self.aws_v4_request("GET", "/", "","")
+                self.aws_v4_request("GET", "/", Vec::new(),"")
             }
         }
     }
