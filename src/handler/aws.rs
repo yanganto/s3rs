@@ -123,6 +123,32 @@ pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String) -> String {
     code_bytes4.to_hex()
 }
 
+// AWS 2 for S3
+// GET /photos/puppy.jpg HTTP/1.1
+// Host: johnsmith.s3.amazonaws.com
+// Date: Mon, 26 Mar 2007 19:37:58 +0000
+
+// Authorization: AWS AKIAIOSFODNN7EXAMPLE:frJIUN8DYpKDtOLCwo//yllqDzg=
+// 
+// 
+// Authorization = "AWS" + " " + AWSAccessKeyId + ":" + Signature;
+
+// Signature = Base64( HMAC-SHA1( YourSecretAccessKeyID, UTF-8-Encoding-Of( StringToSign ) ) );
+
+// StringToSign = HTTP-Verb + "\n" +
+// 	Content-MD5 + "\n" +
+// 	Content-Type + "\n" +
+// 	Date + "\n" +
+// 	CanonicalizedAmzHeaders +
+// 	CanonicalizedResource;
+
+// CanonicalizedResource = [ "/" + Bucket ] +
+// 	<HTTP-Request-URI, from the protocol name up to the query string> +
+// 	[ subresource, if present. For example "?acl", "?location", "?logging", or "?torrent"];
+
+// CanonicalizedAmzHeaders = <described below>
+
+// XXX This is V2 signature but not for S3
 pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query_strings:&mut Vec<(&str, &str)>) -> String {
     let mut string_to_signed = String::from_str(http_method).unwrap();
     string_to_signed.push_str("\n");
@@ -130,10 +156,13 @@ pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query
     string_to_signed.push_str("\n");
     string_to_signed.push_str(uri);
     string_to_signed.push_str("\n");
-    string_to_signed.push_str(canonical_query_string(query_strings).as_str());
+    let qs = canonical_query_string(query_strings);
+    string_to_signed.push_str(qs.as_str());
+    trace!("QUERY_STRING={}", qs.as_str());
     return  string_to_signed
 }
 
+// XXX This is V2 signature but not for S3
 pub fn aws_v2_sign(secret_key: &str, data: &str) -> String {
     let mut mac = Hmac::<sha2_256>::new(secret_key.as_bytes());
     mac.input(data.as_bytes());

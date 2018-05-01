@@ -102,7 +102,7 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
 fn main() {
 
 	log::set_logger(&MY_LOGGER).unwrap();
-	log::set_max_level(LevelFilter::Error);
+	log::set_max_level(LevelFilter::Trace);
 
 
     let mut s3rscfg = std::env::home_dir().unwrap();
@@ -131,7 +131,7 @@ fn main() {
         host: &credential.host,
         access_key: &credential.access_key,
         secrete_key: &credential.secrete_key,
-        s3_type: handler::S3Type::AWS4
+        s3_type: handler::S3Type::AWS4 // current only AWS4 implement
     };
 
 

@@ -5,8 +5,9 @@ use std::str::FromStr;
 mod aws;
 
 pub enum S3Type{
-    AWS4
-
+    AWS4,
+    AWS2,
+    // OSS
 }
 
 
@@ -24,6 +25,56 @@ pub trait S3 {
 
 
 impl<'a> Handler<'a>  {
+    // XXX
+    fn aws_v2_request(&self, method: &str, uri: &str, qs: Vec<(&str, &str)>, payload: &str) -> Response{
+
+        let utc: DateTime<Utc> = Utc::now();   
+        let time_str = utc.format("%Y-%m-%dT%H:%M:%S").to_string();
+        let mut query_strings = vec![
+            ("format", "json"),
+            // ("Version","2009-03-31"),
+            // ("AWSAccessKeyId", self.access_key),
+            // ("SignatureVersion", "2"),
+            // ("SignatureMethod", "HmacSHA256"),
+            // ("Timestamp", time_str.as_str())
+        ];
+        // Action=DescribeJobFlows
+			
+        query_strings.extend(qs.iter().cloned());
+
+        let signature = aws::aws_v2_sign(
+            self.secrete_key, &aws::aws_v2_get_string_to_signed(method, self.host, uri, &mut query_strings));
+        let mut query = String::from_str("http://").unwrap();
+        query.push_str(self.host);
+        query.push_str(uri);
+        query.push('?');
+        query.push_str(&aws::canonical_query_string(& mut query_strings));
+        // query.push_str("&Signature=");
+        // query.push_str(signature.to_lowercase().as_str());
+        // 
+        let mut headers = header::Headers::new();
+        let mut authorize_string = String::from_str("AWS ").unwrap();
+        authorize_string.push_str(self.access_key);
+        authorize_string.push(':');
+        authorize_string.push_str(&signature);
+        headers.set(header::Authorization(authorize_string));
+
+
+        // get a client builder
+        let client = Client::builder()
+            .default_headers(headers)
+            .build().unwrap();
+        
+        match method {
+            "GET" => {
+                client.get(query.as_str()).send().unwrap()
+            }
+            _ => {
+                error!("unspport HTTP verb");
+                client.get(query.as_str()).send().unwrap()
+            }
+        }
+    }
     fn aws_v4_request(&self, method: &str, uri: &str, qs: Vec<(&str, &str)>, payload: &str) -> Response{
 
         let utc: DateTime<Utc> = Utc::now();   
@@ -60,7 +111,8 @@ impl<'a> Handler<'a>  {
         let mut authorize_string = String::from_str("AWS4-HMAC-SHA256 Credential=").unwrap();
         authorize_string.push_str(self.access_key);
         authorize_string.push('/');
-        authorize_string.push_str(&format!("{}/us-east-1/iam/aws4_request, SignedHeaders={}, Signature={}", utc.format("%Y%m%d").to_string(), aws::signed_headers(&mut signed_headers), signature));
+        authorize_string.push_str(&format!("{}/us-east-1/iam/aws4_request, SignedHeaders={}, Signature={}",
+                                           utc.format("%Y%m%d").to_string(), aws::signed_headers(&mut signed_headers), signature));
         headers.set(header::Authorization(authorize_string));
 
         // get a client builder
@@ -81,6 +133,9 @@ impl<'a> Handler<'a>  {
         match self.s3_type {
             S3Type::AWS4 => {
                 self.aws_v4_request("GET", "/", Vec::new(),"")
+            },
+            S3Type::AWS2 =>{
+                self.aws_v2_request("GET", "/", Vec::new(),"")
             }
         }
     }
