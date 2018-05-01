@@ -5,9 +5,8 @@ a **S3** **R**ich **S**upport client
 - multi config
 - AWS4, AWS2, OSS support
 
-current status  
-|----------|-------------|------|------|-----|
+current status:  
+
 | function | descrrption | AWS4 | AWS2 | OSS |
 |----------|-------------|------|------|-----|
-| la       | list bucket | O    |      |     |
-|----------|-------------|------|------|-----|
+| la       | list bucket | O    | X    | X   |
