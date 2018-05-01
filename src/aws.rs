@@ -31,7 +31,7 @@ fn canonical_headers(headers:&mut Vec<(&str, &str)>) -> String {
 }
 
 //SignedHeaders = Lowercase(HeaderName0) + ';' + Lowercase(HeaderName1) + ";" + ... + Lowercase(HeaderNameN)
-fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
+pub fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
     let mut output = Vec::new();
     headers.sort_by(|a, b| a.0.to_lowercase().as_str().cmp(b.0.to_lowercase().as_str()));
     for h in headers {
@@ -44,6 +44,7 @@ fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
 fn hash_payload(payload: &str) -> String {
     let mut sha = Sha256::new();
     sha.input_str(payload);
+    trace!("payload request hash = {}", sha.result_str());
     sha.result_str()
 }
 
@@ -64,51 +65,62 @@ fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<
     input.push_str("\n");
     input.push_str(hash_payload(payload).as_str());
 
+    trace!("canonical request:\n{}", input);
+    
     let mut sha = Sha256::new();
     sha.input_str(input.as_str());
+    trace!("canonical request hash = {}", sha.result_str());
     sha.result_str()
 }
 
-pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&str) -> String {
+pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&str, time_str:String) -> String {
     let mut string_to_signed = String::from_str("AWS4-HMAC-SHA256\n").unwrap();
-    string_to_signed.push_str("20150830T123600Z");
+    string_to_signed.push_str(&time_str);
     string_to_signed.push_str("\n");
-    string_to_signed.push_str("20150830/us-east-1/iam/aws4_request");
+    unsafe{
+        string_to_signed.push_str(&format!("{}/us-east-1/iam/aws4_request", time_str.slice_unchecked(0,8)));
+    }
     string_to_signed.push_str("\n");
     string_to_signed.push_str(aws_v4_canonical_request(http_method, uri, query_strings, headers, payload).as_str());
+    trace!("string_to_signed:\n{}", string_to_signed);
     return  string_to_signed
 }
 
 
 // HMAC(HMAC(HMAC(HMAC("AWS4" + kSecret,"20150830"),"us-east-1"),"iam"),"aws4_request")
-pub fn aws_v4_sign(secret_key: &str, data: &str) -> String {
+pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String) -> String {
     let mut key = String::from("AWS4");
     key.push_str(secret_key);
 
     let mut mac = Hmac::<sha2_256>::new(key.as_str().as_bytes());
-    mac.input(b"20150830");
+    mac.input(time_str.as_str().as_bytes());
     let result = mac.result();
     let code_bytes = result.code();
+    trace!("date_k = {}", code_bytes.to_hex());
 
     let mut mac1 = Hmac::<sha2_256>::new(code_bytes);
     mac1.input(b"us-east-1");
     let result1 = mac1.result();
     let code_bytes1 = result1.code();
+    trace!("region_k = {}", code_bytes1.to_hex());
 
     let mut mac2 = Hmac::<sha2_256>::new(code_bytes1);
     mac2.input(b"iam");
     let result2 = mac2.result();
     let code_bytes2 = result2.code();
+    trace!("service_k = {}", code_bytes2.to_hex());
 
     let mut mac3 = Hmac::<sha2_256>::new(code_bytes2);
     mac3.input(b"aws4_request");
     let result3 = mac3.result();
     let code_bytes3 = result3.code();
+    trace!("signing_k = {}", code_bytes3.to_hex());
 
     let mut mac4 = Hmac::<sha2_256>::new(code_bytes3);
     mac4.input(data.as_bytes());
     let result4 = mac4.result();
     let code_bytes4 = result4.code();
+    trace!("signature = {}", code_bytes4.to_hex());
 
     code_bytes4.to_hex()
 }
@@ -205,7 +217,8 @@ mod tests {
                 "/", 
                 &mut query_strings, 
                 &mut headers,
-                "");
+                "",
+                "20150830T123600Z".to_string());
 
         assert_eq!(
             "AWS4-HMAC-SHA256\n\
@@ -222,7 +235,9 @@ mod tests {
                               "AWS4-HMAC-SHA256\n\
                               20150830T123600Z\n\
                               20150830/us-east-1/iam/aws4_request\n\
-                              f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59");
+                              f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59",
+                              "20150830".to_string()
+                              );
 
         assert_eq!("5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7", sig.as_str());
     }

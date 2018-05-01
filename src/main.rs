@@ -1,9 +1,11 @@
 extern crate toml;
+
 #[macro_use]
 extern crate serde_derive;
 extern crate interactor; 
 use interactor::read_from_tty; 
 extern crate reqwest;
+
 #[macro_use] 
 extern crate hyper;
 extern crate chrono;
@@ -13,6 +15,9 @@ extern crate base64;
 extern crate crypto;
 extern crate rustc_serialize;
 extern crate url;
+
+#[macro_use]
+extern crate log;
 
 
 pub mod aws;
@@ -25,6 +30,25 @@ use std::str::FromStr;
 use std::io::stdout;
 use reqwest::header;
 use chrono::prelude::*;
+use log::{Record, Level, Metadata, LevelFilter};
+
+static MY_LOGGER: MyLogger = MyLogger;
+
+struct MyLogger;
+
+impl log::Log for MyLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Trace
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("{} - {}", record.level(), record.args());
+        }
+    }
+    fn flush(&self) {}
+}
+
 
 
 
@@ -79,7 +103,9 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
 		
 fn main() {
 
-    let verbose = true;
+	log::set_logger(&MY_LOGGER).unwrap();
+	log::set_max_level(LevelFilter::Error);
+
 
     let mut s3rscfg = std::env::home_dir().unwrap();
     s3rscfg.push(".s3rs");
@@ -99,11 +125,9 @@ fn main() {
 
     // save the credential user this time 
     let credential = &config.credential.unwrap()[chosen_int];
-    if verbose {
-        println!("host: {}", credential.host);
-        println!("access key: {}", credential.access_key);
-        println!("secrete key: {}", credential.secrete_key);
-    }
+    debug!("host: {}", credential.host);
+    debug!("access key: {}", credential.access_key);
+    debug!("secrete key: {}", credential.secrete_key);
 
     println!("enter command, help for usage or exit for quit");
 
@@ -119,39 +143,46 @@ fn main() {
         }, false, false).unwrap();
         command = String::from_utf8(raw_input).unwrap();
         println!("");
-        if verbose {
-            println!("===== do command: {:?} =====", command);
-        }
+        debug!("===== do command: {:?} =====", command);
         if command.starts_with("la"){
 
 
-            // XXX: Implement AWS4 auth here
+            // XXX: Implement AWS4 auth first
             let mut query = String::from_str("http://").unwrap();
             query.push_str(credential.host.as_str());
-            // query.push_str("?format=json");
+            query.push_str("?format=json");
 
             let mut headers = header::Headers::new();
 
             let utc: DateTime<Utc> = Utc::now();   
             header! { (XAMZDate, "x-amz-date") => [String] }
-            headers.set(XAMZDate(utc.to_rfc2822()));
+            //headers.set(XAMZDate(utc.to_rfc2822()));
+            let time_str = utc.format("%Y%m%dT%H%M%SZ").to_string();
+            headers.set(XAMZDate(time_str.clone()));
 
+            let mut signed_headers = vec![
+                ("X-AMZ-Date", time_str.as_str()),
+                ("Host",credential.host.as_str())
+            ];
 
-            // let mut mac = Hmac::<Sha256>::new(
-            //         &base64::decode(credential.secrete_key.as_str()).expect("secrete key decode error")
-            //     ).unwrap();
-            // mac.input(b"");
-            // let result = mac.result();
-            // let code_bytes = result.code();
-
-            // println!("auth: {:?}", base64::encode(&code_bytes));
-
-            let mut authorize_string = String::from_str("AWS ").unwrap();
+            let mut query_strings = vec![
+                ("format", "json")
+            ];
+            let signature = 
+                aws::aws_v4_sign(credential.secrete_key.as_str(), 
+                                 aws::aws_v4_get_string_to_signed(
+                                     "GET",
+                                      "/",
+                                      &mut query_strings,
+                                      &mut signed_headers,
+                                      "",
+                                      utc.format("%Y%m%dT%H%M%SZ").to_string()).as_str(),
+                                  utc.format("%Y%m%d").to_string());
+            let mut authorize_string = String::from_str("AWS4-HMAC-SHA256 Credential=").unwrap();
             authorize_string.push_str(credential.access_key.as_str());
-            authorize_string.push(':');
-            // authorize_string.push_str(base64::encode(&code_bytes).as_str());
-            // headers.set(header::Authorization(authorize_string));
-
+            authorize_string.push('/');
+            authorize_string.push_str(&format!("{}/us-east-1/iam/aws4_request, SignedHeaders={}, Signature={}", utc.format("%Y%m%d").to_string(), aws::signed_headers(&mut signed_headers), signature));
+            headers.set(header::Authorization(authorize_string));
 
             // get a client builder
             let client = reqwest::Client::builder()
