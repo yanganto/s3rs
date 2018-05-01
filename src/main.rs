@@ -1,5 +1,4 @@
 extern crate toml;
-
 #[macro_use]
 extern crate serde_derive;
 extern crate interactor; 
@@ -15,9 +14,9 @@ extern crate base64;
 extern crate crypto;
 extern crate rustc_serialize;
 extern crate url;
-
 #[macro_use]
 extern crate log;
+extern crate md5;
 
 
 mod handler;

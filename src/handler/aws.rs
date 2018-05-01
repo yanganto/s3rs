@@ -6,6 +6,7 @@ use hmac::{Hmac, Mac};
 use rustc_serialize::hex::ToHex;
 use base64::encode;
 use url::form_urlencoded;
+use md5;
 
 pub fn canonical_query_string(query_strings:&mut Vec<(&str, &str)>) -> String {
     query_strings.sort_by_key(|a| a.0);
@@ -26,6 +27,20 @@ fn canonical_headers(headers:&mut Vec<(&str, &str)>) -> String {
         output.push(':');
         output.push_str(h.1.trim());
         output.push('\n');
+    }
+    output
+}
+
+fn canonical_amz_headers(headers:&mut Vec<(&str, &str)>) -> String {
+    let mut output = String::new();
+    headers.sort_by(|a, b| a.0.to_lowercase().as_str().cmp(b.0.to_lowercase().as_str()));
+    for h in headers {
+        if h.0.to_lowercase().trim().starts_with("x-amz-") && h.0.to_lowercase().trim() != "x-amz-date" {
+            output.push_str(h.0.to_lowercase().as_str());
+            output.push(':');
+            output.push_str(h.1.trim());
+            output.push('\n');
+        }
     }
     output
 }
@@ -141,14 +156,35 @@ pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String) -> String {
 // 	Date + "\n" +
 // 	CanonicalizedAmzHeaders +
 // 	CanonicalizedResource;
+pub fn aws_s3_v2_get_string_to_signed(http_method: &str, uri:&str, headers:&mut Vec<(&str, &str)>, content: &str) -> String {
+    let mut string_to_signed = String::from_str(http_method).unwrap();
+    string_to_signed.push('\n');
+    if content != ""{
+        string_to_signed.push_str(&format!("{:x}", md5::compute(content.as_bytes())));
+    }
+    string_to_signed.push('\n');
 
-// CanonicalizedResource = [ "/" + Bucket ] +
-// 	<HTTP-Request-URI, from the protocol name up to the query string> +
-// 	[ subresource, if present. For example "?acl", "?location", "?logging", or "?torrent"];
+    for h in headers.clone(){
+        if h.0.to_lowercase().trim() == "content-type"{
+            string_to_signed.push_str(h.1);
+            break;
+        }
+    }
+    string_to_signed.push('\n');
 
-// CanonicalizedAmzHeaders = <described below>
+    for h in headers.clone() {
+        if h.0.to_lowercase().trim() == "x-amz-date"{
+            string_to_signed.push_str(h.1);
+            break;
+        }
+    }
+    string_to_signed.push('\n');
+    string_to_signed.push_str(&canonical_amz_headers(headers));
+    string_to_signed.push_str(uri);
+    return  string_to_signed
+}
 
-// XXX This is V2 signature but not for S3
+//  NOTE: This is V2 signature but not for S3 REST
 pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query_strings:&mut Vec<(&str, &str)>) -> String {
     let mut string_to_signed = String::from_str(http_method).unwrap();
     string_to_signed.push_str("\n");
@@ -162,7 +198,7 @@ pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query
     return  string_to_signed
 }
 
-// XXX This is V2 signature but not for S3
+//  NOTE: This is V2 signature but not for S3 REST
 pub fn aws_v2_sign(secret_key: &str, data: &str) -> String {
     let mut mac = Hmac::<sha2_256>::new(secret_key.as_bytes());
     mac.input(data.as_bytes());
@@ -269,6 +305,29 @@ mod tests {
         assert_eq!("5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7", sig.as_str());
     }
 
+    #[test]
+    fn test_aws_s3_v2_get_string_to_signed() {
+        let mut headers = vec![
+            ("Host", "johnsmith.s3.amazonaws.com"),
+            ("X-AMZ-Date", "Tue, 27 Mar 2007 19:36:42 +0000"),
+            ("Action", "DescribeJobFlows"),
+            ("SignatureMethod", "HmacSHA256"),
+            ("SignatureVersion", "2"),
+            ("Version", "2009-03-31")
+        ];
+        // NOTE: now we implement path style bucket only
+        let string_need_signed = aws_s3_v2_get_string_to_signed(
+            "GET",
+            "/johnsmith/photos/puppy.jpg", 
+            &mut headers,
+            "");
 
-
+        assert_eq!(
+            "GET\n\
+            \n\
+            \n\
+            Tue, 27 Mar 2007 19:36:42 +0000\n\
+            /johnsmith/photos/puppy.jpg",
+            string_need_signed.as_str());
+    }
 }

@@ -32,12 +32,14 @@ impl<'a> Handler<'a>  {
         let time_str = utc.format("%Y-%m-%dT%H:%M:%S").to_string();
         let mut query_strings = vec![
             ("format", "json"),
-            // ("Version","2009-03-31"),
-            // ("AWSAccessKeyId", self.access_key),
-            // ("SignatureVersion", "2"),
-            // ("SignatureMethod", "HmacSHA256"),
-            // ("Timestamp", time_str.as_str())
+            ("Version","2009-03-31"),
+            ("AWSAccessKeyId", self.access_key),
+            ("SignatureVersion", "2"),
+            ("SignatureMethod", "HmacSHA256"),
+            ("Timestamp", time_str.as_str()),
+            ("Endpoint", "us-east-1")
         ];
+
         // Action=DescribeJobFlows
 			
         query_strings.extend(qs.iter().cloned());
@@ -49,9 +51,9 @@ impl<'a> Handler<'a>  {
         query.push_str(uri);
         query.push('?');
         query.push_str(&aws::canonical_query_string(& mut query_strings));
-        // query.push_str("&Signature=");
-        // query.push_str(signature.to_lowercase().as_str());
-        // 
+        query.push_str("&Signature=");
+        query.push_str(signature.to_lowercase().as_str());
+         
         let mut headers = header::Headers::new();
         let mut authorize_string = String::from_str("AWS ").unwrap();
         authorize_string.push_str(self.access_key);
