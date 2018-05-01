@@ -20,7 +20,7 @@ extern crate url;
 extern crate log;
 
 
-pub mod aws;
+mod handler;
 
 use std::io;
 use std::io::{Read, Write, BufReader, BufRead};
@@ -28,8 +28,6 @@ use std::fs::{File, OpenOptions};
 use std::str;
 use std::str::FromStr;
 use std::io::stdout;
-use reqwest::header;
-use chrono::prelude::*;
 use log::{Record, Level, Metadata, LevelFilter};
 
 static MY_LOGGER: MyLogger = MyLogger;
@@ -129,6 +127,16 @@ fn main() {
     debug!("access key: {}", credential.access_key);
     debug!("secrete key: {}", credential.secrete_key);
 
+    let handler = handler::Handler{
+        host: &credential.host,
+        access_key: &credential.access_key,
+        secrete_key: &credential.secrete_key,
+        s3_type: handler::S3Type::AWS4
+    };
+
+
+    //XXX new handler here
+
     println!("enter command, help for usage or exit for quit");
 
     let mut raw_input;
@@ -145,51 +153,7 @@ fn main() {
         println!("");
         debug!("===== do command: {:?} =====", command);
         if command.starts_with("la"){
-
-
-            // XXX: Implement AWS4 auth first
-            let mut query = String::from_str("http://").unwrap();
-            query.push_str(credential.host.as_str());
-            query.push_str("?format=json");
-
-            let mut headers = header::Headers::new();
-
-            let utc: DateTime<Utc> = Utc::now();   
-            header! { (XAMZDate, "x-amz-date") => [String] }
-            //headers.set(XAMZDate(utc.to_rfc2822()));
-            let time_str = utc.format("%Y%m%dT%H%M%SZ").to_string();
-            headers.set(XAMZDate(time_str.clone()));
-
-            let mut signed_headers = vec![
-                ("X-AMZ-Date", time_str.as_str()),
-                ("Host",credential.host.as_str())
-            ];
-
-            let mut query_strings = vec![
-                ("format", "json")
-            ];
-            let signature = 
-                aws::aws_v4_sign(credential.secrete_key.as_str(), 
-                                 aws::aws_v4_get_string_to_signed(
-                                     "GET",
-                                      "/",
-                                      &mut query_strings,
-                                      &mut signed_headers,
-                                      "",
-                                      utc.format("%Y%m%dT%H%M%SZ").to_string()).as_str(),
-                                  utc.format("%Y%m%d").to_string());
-            let mut authorize_string = String::from_str("AWS4-HMAC-SHA256 Credential=").unwrap();
-            authorize_string.push_str(credential.access_key.as_str());
-            authorize_string.push('/');
-            authorize_string.push_str(&format!("{}/us-east-1/iam/aws4_request, SignedHeaders={}, Signature={}", utc.format("%Y%m%d").to_string(), aws::signed_headers(&mut signed_headers), signature));
-            headers.set(header::Authorization(authorize_string));
-
-            // get a client builder
-            let client = reqwest::Client::builder()
-                .default_headers(headers)
-                .build().unwrap();
-
-            res = client.get(query.as_str()).send().unwrap();
+            res = handler.la();
 
             println!("Status: {}", res.status());
             println!("Headers:\n{}", res.headers());
