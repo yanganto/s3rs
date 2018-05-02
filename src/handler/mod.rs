@@ -25,48 +25,43 @@ pub trait S3 {
 
 
 impl<'a> Handler<'a>  {
-    // XXX
-    fn aws_v2_request(&self, method: &str, uri: &str, qs: Vec<(&str, &str)>, payload: &str) -> Response{
+    fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &str) -> Response{
 
         let utc: DateTime<Utc> = Utc::now();   
-        let time_str = utc.format("%Y-%m-%dT%H:%M:%S").to_string();
-        let mut query_strings = vec![
-            ("format", "json"),
-            ("Version","2009-03-31"),
-            ("AWSAccessKeyId", self.access_key),
-            ("SignatureVersion", "2"),
-            ("SignatureMethod", "HmacSHA256"),
-            ("Timestamp", time_str.as_str()),
-            ("Endpoint", "us-east-1")
+        header! { (Date, "date") => [String] }
+        let mut headers = header::Headers::new();
+        let time_str = utc.to_rfc2822();
+        headers.set(Date(time_str.clone()));
+
+        // NOTE: ceph has bug using x-amz-date
+        let mut signed_headers = vec![
+            ("Date", time_str.as_str())
         ];
 
-        // Action=DescribeJobFlows
-			
+        let mut query_strings = vec![
+            ("format", "json")
+        ];
         query_strings.extend(qs.iter().cloned());
 
-        let signature = aws::aws_v2_sign(
-            self.secrete_key, &aws::aws_v2_get_string_to_signed(method, self.host, uri, &mut query_strings));
         let mut query = String::from_str("http://").unwrap();
         query.push_str(self.host);
         query.push_str(uri);
         query.push('?');
         query.push_str(&aws::canonical_query_string(& mut query_strings));
-        query.push_str("&Signature=");
-        query.push_str(signature.to_lowercase().as_str());
-         
-        let mut headers = header::Headers::new();
+        let signature = aws::aws_s3_v2_sign(
+            self.secrete_key, 
+            &aws::aws_s3_v2_get_string_to_signed(method, uri, &mut signed_headers, payload)
+        );
         let mut authorize_string = String::from_str("AWS ").unwrap();
         authorize_string.push_str(self.access_key);
         authorize_string.push(':');
         authorize_string.push_str(&signature);
         headers.set(header::Authorization(authorize_string));
 
-
         // get a client builder
         let client = Client::builder()
             .default_headers(headers)
             .build().unwrap();
-        
         match method {
             "GET" => {
                 client.get(query.as_str()).send().unwrap()
@@ -76,8 +71,9 @@ impl<'a> Handler<'a>  {
                 client.get(query.as_str()).send().unwrap()
             }
         }
+
     }
-    fn aws_v4_request(&self, method: &str, uri: &str, qs: Vec<(&str, &str)>, payload: &str) -> Response{
+    fn aws_v4_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &str) -> Response{
 
         let utc: DateTime<Utc> = Utc::now();   
         header! { (XAMZDate, "x-amz-date") => [String] }
@@ -135,26 +131,43 @@ impl<'a> Handler<'a>  {
     pub fn la(&self) -> Response{
         match self.s3_type {
             S3Type::AWS4 => {
-                self.aws_v4_request("GET", "/", Vec::new(),"")
+                self.aws_v4_request("GET", "/", &Vec::new(),"")
             },
             S3Type::AWS2 =>{
-                self.aws_v2_request("GET", "/", Vec::new(),"")
+                self.aws_v2_request("GET", "/", &Vec::new(),"")
             }
         }
     }
 
-    pub fn url_command(&self, uri: &str) -> Response{
+    pub fn url_command(&self, url: &str) -> Response{
+        let mut uri = String::new();
+        let mut raw_qs = String::new();
+        let mut query_strings = Vec::new();
+        match url.find('?'){
+            Some(idx) =>{
+                uri.push_str(&url[..idx]);
+                raw_qs.push_str(&String::from_str(&url[idx+1..]).unwrap());
+                for q_pair in raw_qs.split('&'){
+                    match q_pair.find('='){
+                        Some(i)=>{query_strings.push((&q_pair[..i], &q_pair[i+1..]))},
+                        None => {query_strings.push((&q_pair, ""))}
+                    }
+                }
+            },
+            None => {
+                uri.push_str(&url);
+            }
+        }
+
+
         match self.s3_type {
             S3Type::AWS4 => {
-                self.aws_v4_request("GET", uri, Vec::new(),"")
+                self.aws_v4_request("GET", &uri, &query_strings,"")
             },
             S3Type::AWS2 =>{
-                self.aws_v2_request("GET", uri, Vec::new(),"")
+                self.aws_v2_request("GET", &uri, &query_strings,"")
             }
         }
     }
 
 }
-
-    
-

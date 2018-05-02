@@ -169,19 +169,30 @@ pub fn aws_s3_v2_get_string_to_signed(http_method: &str, uri:&str, headers:&mut 
     }
     string_to_signed.push('\n');
 
+    let mut has_date = false;
     for h in headers.clone() {
         if h.0.to_lowercase().trim() == "x-amz-date"{
             string_to_signed.push_str(h.1);
+            has_date = true;
             break;
+        }
+    }
+    if !has_date {
+        for h in headers.clone() {
+            if h.0.to_lowercase().trim() == "date"{
+                string_to_signed.push_str(h.1);
+                break;
+            }
         }
     }
     string_to_signed.push('\n');
     string_to_signed.push_str(&canonical_amz_headers(headers));
     string_to_signed.push_str(uri);
+    trace!("string to signed:\n{}", string_to_signed);
     return  string_to_signed
 }
 
-//  NOTE: This is V2 signature but not for S3 REST
+//  NOTE: This is V2 signature but not for S3 REST, Im not sure where to use
 pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query_strings:&mut Vec<(&str, &str)>) -> String {
     let mut string_to_signed = String::from_str(http_method).unwrap();
     string_to_signed.push_str("\n");
@@ -195,7 +206,7 @@ pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query
     return  string_to_signed
 }
 
-//  NOTE: This is V2 signature but not for S3 REST
+//  NOTE: This is V2 signature but not for S3 REST, Im not sure where to use
 pub fn aws_v2_sign(secret_key: &str, data: &str) -> String {
     let mut mac = Hmac::<sha2_256>::new(secret_key.as_bytes());
     mac.input(data.as_bytes());
@@ -332,7 +343,7 @@ mod tests {
     fn test_aws_s3_v2_sign() {
         let mut headers = vec![
             ("Host", "johnsmith.s3.amazonaws.com"),
-            ("X-AMZ-Date", "Tue, 27 Mar 2007 19:36:42 +0000"),
+            ("Date", "Tue, 27 Mar 2007 19:36:42 +0000"),
             ("Action", "DescribeJobFlows"),
             ("SignatureMethod", "HmacSHA256"),
             ("SignatureVersion", "2"),

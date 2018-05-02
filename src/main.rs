@@ -127,18 +127,37 @@ fn main() {
     debug!("access key: {}", credential.access_key);
     debug!("secrete key: {}", credential.secrete_key);
 
-    let handler = handler::Handler{
+    let mut handler = handler::Handler{
         host: &credential.host,
         access_key: &credential.access_key,
         secrete_key: &credential.secrete_key,
-        s3_type: handler::S3Type::AWS4 // current only AWS4 implement
+        s3_type: handler::S3Type::AWS4 // default use AWS4
     };
 
     println!("enter command, help for usage or exit for quit");
 
     let mut raw_input;
     let mut command = String::new(); 
-    let mut res;
+
+    fn print_response(res: &mut reqwest::Response){
+        println!("Status: {}", res.status());
+        println!("Headers:\n{}", res.headers());
+        let _ = std::io::copy(res, &mut std::io::stdout()).unwrap();
+    }
+
+    fn change_s3_type(command: &str, handler: &mut handler::Handler){
+        if command.ends_with("aws2"){
+            handler.s3_type = handler::S3Type::AWS2;
+            println!("using aws version 2 protocol ");
+        } else if command.ends_with("aws4") || command.ends_with("aws") ||
+             command.ends_with("ceph") {
+            handler.s3_type = handler::S3Type::AWS4;
+            println!("using aws verion 4 protocol ");
+        }else{
+            println!("usage: s3type [aws/aws4/aws2/ceph]");
+        }
+    }
+
     while command != "exit" {
         print!("> ");
         stdout().flush().expect("Could not flush stdout");
@@ -150,26 +169,20 @@ fn main() {
         println!("");
         debug!("===== do command: {:?} =====", command);
         if command.starts_with("la"){
-            res = handler.la();
-
-            println!("Status: {}", res.status());
-            println!("Headers:\n{}", res.headers());
-
-            // copy the response body directly to stdout
-            let _ = std::io::copy(&mut res, &mut std::io::stdout()).unwrap();
+            print_response(&mut handler.la());
         } else if command.starts_with("/"){
-            res = handler.url_command(&command);
-
-            println!("Status: {}", res.status());
-            println!("Headers:\n{}", res.headers());
-
-            // copy the response body directly to stdout
-            let _ = std::io::copy(&mut res, &mut std::io::stdout()).unwrap();
+            print_response(&mut handler.url_command(&command));
+        } else if command.starts_with("s3type"){
+            change_s3_type(&command, &mut handler);
+        } else if command.starts_with("debug"){// XXX this should be better
+            log::set_max_level(LevelFilter::Trace);
+            println!("verbose");
         } else if command.starts_with("exit"){
             println!("Thanks for using, cya~");
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
         }
+
         println!("");
         stdout().flush().expect("Could not flush stdout");
     }
