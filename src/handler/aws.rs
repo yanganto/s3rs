@@ -7,6 +7,8 @@ use rustc_serialize::hex::ToHex;
 use base64::encode;
 use url::form_urlencoded;
 use md5;
+use hmacsha1;
+
 
 pub fn canonical_query_string(query_strings:&mut Vec<(&str, &str)>) -> String {
     query_strings.sort_by_key(|a| a.0);
@@ -139,17 +141,12 @@ pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String) -> String {
 }
 
 // AWS 2 for S3
-// GET /photos/puppy.jpg HTTP/1.1
-// Host: johnsmith.s3.amazonaws.com
-// Date: Mon, 26 Mar 2007 19:37:58 +0000
-
-// Authorization: AWS AKIAIOSFODNN7EXAMPLE:frJIUN8DYpKDtOLCwo//yllqDzg=
-// 
-// 
-// Authorization = "AWS" + " " + AWSAccessKeyId + ":" + Signature;
-
 // Signature = Base64( HMAC-SHA1( YourSecretAccessKeyID, UTF-8-Encoding-Of( StringToSign ) ) );
+pub fn aws_s3_v2_sign(secret_key: &str, data: &str) -> String {
+    encode(&hmacsha1::hmac_sha1(secret_key.as_bytes(), data.as_bytes()))
+}
 
+// AWS 2 for S3
 // StringToSign = HTTP-Verb + "\n" +
 // 	Content-MD5 + "\n" +
 // 	Content-Type + "\n" +
@@ -329,5 +326,26 @@ mod tests {
             Tue, 27 Mar 2007 19:36:42 +0000\n\
             /johnsmith/photos/puppy.jpg",
             string_need_signed.as_str());
+    }
+
+    #[test]
+    fn test_aws_s3_v2_sign() {
+        let mut headers = vec![
+            ("Host", "johnsmith.s3.amazonaws.com"),
+            ("X-AMZ-Date", "Tue, 27 Mar 2007 19:36:42 +0000"),
+            ("Action", "DescribeJobFlows"),
+            ("SignatureMethod", "HmacSHA256"),
+            ("SignatureVersion", "2"),
+            ("Version", "2009-03-31")
+        ];
+        // NOTE: now we implement path style bucket only
+        let string_need_signed = aws_s3_v2_get_string_to_signed(
+            "GET",
+            "/johnsmith/photos/puppy.jpg", 
+            &mut headers,
+            "");
+        println!("string to signed: {}", string_need_signed);
+        let sig = aws_s3_v2_sign("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", string_need_signed.as_str());
+        assert_eq!("bWq2s1WEIj+Ydj0vQ697zp+IXMU=", sig);
     }
 }

@@ -114,7 +114,8 @@ impl<'a> Handler<'a>  {
         authorize_string.push_str(self.access_key);
         authorize_string.push('/');
         authorize_string.push_str(&format!("{}/us-east-1/iam/aws4_request, SignedHeaders={}, Signature={}",
-                                           utc.format("%Y%m%d").to_string(), aws::signed_headers(&mut signed_headers), signature));
+                                           utc.format("%Y%m%d").to_string(),
+                                           aws::signed_headers(&mut signed_headers), signature));
         headers.set(header::Authorization(authorize_string));
 
         // get a client builder
@@ -138,6 +139,17 @@ impl<'a> Handler<'a>  {
             },
             S3Type::AWS2 =>{
                 self.aws_v2_request("GET", "/", Vec::new(),"")
+            }
+        }
+    }
+
+    pub fn url_command(&self, uri: &str) -> Response{
+        match self.s3_type {
+            S3Type::AWS4 => {
+                self.aws_v4_request("GET", uri, Vec::new(),"")
+            },
+            S3Type::AWS2 =>{
+                self.aws_v2_request("GET", uri, Vec::new(),"")
             }
         }
     }
