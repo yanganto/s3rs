@@ -121,7 +121,10 @@ impl<'a> Handler<'a>  {
         match method {
             "GET" => {
                 client.get(query.as_str()).send().unwrap()
-            }
+            },
+            "PUT" => {
+                client.put(query.as_str()).send().unwrap()
+            },
             _ => {
                 error!("unspport HTTP verb");
                 client.get(query.as_str()).send().unwrap()
@@ -139,6 +142,19 @@ impl<'a> Handler<'a>  {
         }
     }
 
+    pub fn mb(&self, bucket: &str) -> Response{
+        let mut uri = String::from_str("/").unwrap();
+        uri.push_str(bucket);
+        match self.s3_type {
+            S3Type::AWS4 => {
+                self.aws_v4_request("PUT", &uri, &Vec::new(),"")
+            },
+            S3Type::AWS2 =>{
+                self.aws_v2_request("PUT", &uri, &Vec::new(),"")
+            }
+        }
+    }
+
     pub fn url_command(&self, url: &str) -> Response{
         let mut uri = String::new();
         let mut raw_qs = String::new();
@@ -149,7 +165,7 @@ impl<'a> Handler<'a>  {
                 raw_qs.push_str(&String::from_str(&url[idx+1..]).unwrap());
                 for q_pair in raw_qs.split('&'){
                     match q_pair.find('='){
-                        Some(i)=>{query_strings.push((&q_pair[..i], &q_pair[i+1..]))},
+                        Some(i)=>{query_strings.push(q_pair.split_at(i))},
                         None => {query_strings.push((&q_pair, ""))}
                     }
                 }

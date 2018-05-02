@@ -170,6 +170,8 @@ fn main() {
         debug!("===== do command: {:?} =====", command);
         if command.starts_with("la"){
             print_response(&mut handler.la());
+        } else if command.starts_with("mb"){
+            print_response(&mut handler.mb(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("/"){
             print_response(&mut handler.url_command(&command));
         } else if command.starts_with("s3type"){
