@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 use reqwest::{Response, header, Client};
 use std::str::FromStr;
+use serde_json;
 
 mod aws;
 
@@ -62,10 +63,11 @@ impl<'a> Handler<'a>  {
         let client = Client::builder()
             .default_headers(headers)
             .build().unwrap();
+
         match method {
-            "GET" => {
-                client.get(query.as_str()).send().unwrap()
-            }
+            "GET" => {client.get(query.as_str()).send().unwrap()},
+            "PUT" => {client.put(query.as_str()).send().unwrap()},
+            "DELETE" => {client.delete(query.as_str()).send().unwrap()},
             _ => {
                 error!("unspport HTTP verb");
                 client.get(query.as_str()).send().unwrap()
@@ -119,39 +121,76 @@ impl<'a> Handler<'a>  {
             .default_headers(headers)
             .build().unwrap();
         match method {
-            "GET" => {
-                client.get(query.as_str()).send().unwrap()
-            },
-            "PUT" => {
-                client.put(query.as_str()).send().unwrap()
-            },
+            "GET" => {client.get(query.as_str()).send().unwrap()},
+            "PUT" => {client.put(query.as_str()).send().unwrap()},
+            "DELETE" => {client.delete(query.as_str()).send().unwrap()},
             _ => {
                 error!("unspport HTTP verb");
                 client.get(query.as_str()).send().unwrap()
             }
         }
     }
-    pub fn la(&self) -> Response{
+    pub fn la(&self) -> Vec<Response> {
+
+        let mut res: Response;
+        let mut res_list = Vec::new();
         match self.s3_type {
-            S3Type::AWS4 => {
-                self.aws_v4_request("GET", "/", &Vec::new(),"")
-            },
-            S3Type::AWS2 =>{
-                self.aws_v2_request("GET", "/", &Vec::new(),"")
+            S3Type::AWS4 => { res = self.aws_v4_request("GET", "/", &Vec::new(),"");},
+            S3Type::AWS2 => { res = self.aws_v2_request("GET", "/", &Vec::new(),"");}
+        }
+        let result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
+        for bucket_list in  result[1].as_array(){
+            for bucket in bucket_list{
+                print!("bucket: {} ", bucket["Name"]);
+                match self.s3_type {
+                    S3Type::AWS4 => { 
+                        res = self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(),"");
+                        let object_result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
+                        println!("objects: {} ", object_result["Contents"]);
+                        res_list.push(res);
+                    },
+                    S3Type::AWS2 => { 
+                        res = self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(),"");
+                        let object_result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
+                        println!("objects: {} ", object_result["Contents"]);
+                        res_list.push(res);
+                    }
+                }
             }
         }
+        res_list
+    }
+
+    pub fn ls(&self) -> Response{
+        let mut res: Response;
+        match self.s3_type {
+            S3Type::AWS4 => {res =self.aws_v4_request("GET", "/", &Vec::new(),"");},
+            S3Type::AWS2 => {res = self.aws_v2_request("GET", "/", &Vec::new(),"");}
+        }
+        let result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
+        for bucket_list in  result[1].as_array(){
+            for bucket in bucket_list{
+                println!("bucket: {} ", bucket["Name"].as_str().unwrap());
+            }
+        }
+        res
     }
 
     pub fn mb(&self, bucket: &str) -> Response{
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);
         match self.s3_type {
-            S3Type::AWS4 => {
-                self.aws_v4_request("PUT", &uri, &Vec::new(),"")
-            },
-            S3Type::AWS2 =>{
-                self.aws_v2_request("PUT", &uri, &Vec::new(),"")
-            }
+            S3Type::AWS4 => {self.aws_v4_request("PUT", &uri, &Vec::new(),"")},
+            S3Type::AWS2 => {self.aws_v2_request("PUT", &uri, &Vec::new(),"")}
+        }
+    }
+
+    pub fn rb(&self, bucket: &str) -> Response{
+        let mut uri = String::from_str("/").unwrap();
+        uri.push_str(bucket);
+        match self.s3_type {
+            S3Type::AWS4 => {self.aws_v4_request("DELETE", &uri, &Vec::new(),"")},
+            S3Type::AWS2 => {self.aws_v2_request("DELETE", &uri, &Vec::new(),"")}
         }
     }
 
@@ -177,12 +216,8 @@ impl<'a> Handler<'a>  {
 
 
         match self.s3_type {
-            S3Type::AWS4 => {
-                self.aws_v4_request("GET", &uri, &query_strings,"")
-            },
-            S3Type::AWS2 =>{
-                self.aws_v2_request("GET", &uri, &query_strings,"")
-            }
+            S3Type::AWS4 => {self.aws_v4_request("GET", &uri, &query_strings,"")},
+            S3Type::AWS2 => {self.aws_v2_request("GET", &uri, &query_strings,"")}
         }
     }
 

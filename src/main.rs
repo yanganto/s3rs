@@ -18,6 +18,8 @@ extern crate url;
 extern crate log;
 extern crate md5;
 extern crate hmacsha1;
+extern crate serde_json;
+
 
 
 mod handler;
@@ -29,8 +31,41 @@ use std::str;
 use std::str::FromStr;
 use std::io::stdout;
 use log::{Record, Level, Metadata, LevelFilter};
+use reqwest::StatusCode;
 
 static MY_LOGGER: MyLogger = MyLogger;
+
+static USAGE:&str = r#"
+usage:
+    la 
+        list all objects
+
+    ls 
+        list all buckets
+
+    mb <bucket name>
+        create bucket
+
+    rm <bucket name>
+        delete bucket
+
+    /<uri>?<query string>
+        get uri command
+
+    help 
+        show this usage
+
+    log <trace/debug/info/error>
+        change the log level
+        trace for request auth detail
+        debug for request header, status code, raw body
+
+    s3_type <aws2/aws4/aws/oss>
+        change the auth type for different S3 service
+
+    exit
+        quit the programe
+"#;
 
 struct MyLogger;
 
@@ -140,9 +175,19 @@ fn main() {
     let mut command = String::new(); 
 
     fn print_response(res: &mut reqwest::Response){
-        println!("Status: {}", res.status());
-        println!("Headers:\n{}", res.headers());
-        let _ = std::io::copy(res, &mut std::io::stdout()).unwrap();
+        if res.status() != StatusCode::Ok{
+            println!("Status: {}", res.status());
+        } else {
+            debug!("Status: {}", res.status());
+        }
+        debug!("Headers:\n{}", res.headers());
+        debug!("Body:\n{}", &res.text().unwrap_or(String::from_str("").unwrap()));
+    }
+
+    fn print_multi_response(res_list: &mut Vec<reqwest::Response>){
+        for r in res_list{
+            print_response(r);
+        }
     }
 
     fn change_s3_type(command: &str, handler: &mut handler::Handler){
@@ -158,6 +203,18 @@ fn main() {
         }
     }
 
+    fn change_log_type(command: &str) {
+        if command.ends_with("trace") {
+            log::set_max_level(LevelFilter::Trace);
+            println!("set up log level trace");
+        } else if command.ends_with("debug") {
+            log::set_max_level(LevelFilter::Debug);
+            println!("set up log level debug");
+        }else{
+            println!("usage: log [trace/debug/info/error]");
+        }
+    }
+
     while command != "exit" {
         print!("> ");
         stdout().flush().expect("Could not flush stdout");
@@ -169,22 +226,26 @@ fn main() {
         println!("");
         debug!("===== do command: {:?} =====", command);
         if command.starts_with("la"){
-            print_response(&mut handler.la());
+            print_multi_response(&mut handler.la());
+        } else if command.starts_with("ls"){
+            print_response(&mut handler.ls());
         } else if command.starts_with("mb"){
             print_response(&mut handler.mb(command.split_whitespace().nth(1).unwrap()));
+        } else if command.starts_with("rb"){
+            print_response(&mut handler.rb(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("/"){
             print_response(&mut handler.url_command(&command));
         } else if command.starts_with("s3type"){
             change_s3_type(&command, &mut handler);
-        } else if command.starts_with("debug"){// XXX this should be better
-            log::set_max_level(LevelFilter::Trace);
-            println!("verbose");
+        } else if command.starts_with("log"){ // XXX this should be better
+            change_log_type(&command);
         } else if command.starts_with("exit"){
             println!("Thanks for using, cya~");
+        } else if command.starts_with("help"){
+            println!("{}", USAGE);
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
         }
-
         println!("");
         stdout().flush().expect("Could not flush stdout");
     }
