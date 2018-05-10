@@ -177,11 +177,13 @@ fn main() {
     fn print_response(res: &mut reqwest::Response){
         if res.status() != StatusCode::Ok{
             println!("Status: {}", res.status());
+            println!("Headers:\n{}", res.headers());
+            println!("Body:\n{}", &res.text().unwrap_or(String::from_str("").unwrap()));
         } else {
             debug!("Status: {}", res.status());
+            debug!("Headers:\n{}", res.headers());
+            debug!("Body:\n{}", &res.text().unwrap_or(String::from_str("").unwrap()));
         }
-        debug!("Headers:\n{}", res.headers());
-        debug!("Body:\n{}", &res.text().unwrap_or(String::from_str("").unwrap()));
     }
 
     fn print_multi_response(res_list: &mut Vec<reqwest::Response>){

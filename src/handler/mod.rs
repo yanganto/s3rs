@@ -141,18 +141,18 @@ impl<'a> Handler<'a>  {
         let result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
         for bucket_list in  result[1].as_array(){
             for bucket in bucket_list{
-                print!("bucket: {} ", bucket["Name"]);
+                let bucket_prefix = format!("S3://{}", bucket["Name"].as_str().unwrap());
                 match self.s3_type {
                     S3Type::AWS4 => { 
                         res = self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(),"");
                         let object_result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
-                        println!("objects: {} ", object_result["Contents"]);
+                        println!("{}/{} ", bucket_prefix, object_result["Contents"][0].as_str().unwrap_or(&String::from_str("").unwrap()));
                         res_list.push(res);
                     },
                     S3Type::AWS2 => { 
                         res = self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(),"");
                         let object_result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
-                        println!("objects: {} ", object_result["Contents"]);
+                        println!("{}/{} ", bucket_prefix, object_result["Contents"][0].as_str().unwrap_or(&String::from_str("").unwrap()));
                         res_list.push(res);
                     }
                 }
@@ -170,7 +170,7 @@ impl<'a> Handler<'a>  {
         let result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
         for bucket_list in  result[1].as_array(){
             for bucket in bucket_list{
-                println!("bucket: {} ", bucket["Name"].as_str().unwrap());
+                println!("S3://{} ", bucket["Name"].as_str().unwrap());
             }
         }
         res
