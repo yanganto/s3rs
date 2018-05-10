@@ -19,7 +19,7 @@ extern crate log;
 extern crate md5;
 extern crate hmacsha1;
 extern crate serde_json;
-
+extern crate regex;
 
 
 mod handler;
@@ -42,6 +42,9 @@ usage:
 
     ls 
         list all buckets
+
+    ls <bucket>
+        list all objects of the bucket
 
     mb <bucket name>
         create bucket
@@ -189,6 +192,7 @@ fn main() {
     fn print_multi_response(res_list: &mut Vec<reqwest::Response>){
         for r in res_list{
             print_response(r);
+            debug!("==========")
         }
     }
 
@@ -230,7 +234,7 @@ fn main() {
         if command.starts_with("la"){
             print_multi_response(&mut handler.la());
         } else if command.starts_with("ls"){
-            print_response(&mut handler.ls());
+            print_response(&mut handler.ls(command.split_whitespace().nth(1)));
         } else if command.starts_with("mb"){
             print_response(&mut handler.mb(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("rb"){

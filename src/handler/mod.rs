@@ -2,6 +2,8 @@ use chrono::prelude::*;
 use reqwest::{Response, header, Client};
 use std::str::FromStr;
 use serde_json;
+use regex::Regex;
+
 
 mod aws;
 
@@ -131,7 +133,7 @@ impl<'a> Handler<'a>  {
         }
     }
     pub fn la(&self) -> Vec<Response> {
-
+        let re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
         let mut res: Response;
         let mut res_list = Vec::new();
         match self.s3_type {
@@ -139,20 +141,23 @@ impl<'a> Handler<'a>  {
             S3Type::AWS2 => { res = self.aws_v2_request("GET", "/", &Vec::new(),"");}
         }
         let result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
+        res_list.push(res);
         for bucket_list in  result[1].as_array(){
             for bucket in bucket_list{
                 let bucket_prefix = format!("S3://{}", bucket["Name"].as_str().unwrap());
                 match self.s3_type {
                     S3Type::AWS4 => { 
                         res = self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(),"");
-                        let object_result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
-                        println!("{}/{} ", bucket_prefix, object_result["Contents"][0].as_str().unwrap_or(&String::from_str("").unwrap()));
+                        for cap in re.captures_iter(&res.text().unwrap()) {
+                            println!("{}/{}", bucket_prefix, &cap[1]);
+                        }
                         res_list.push(res);
                     },
                     S3Type::AWS2 => { 
                         res = self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(),"");
-                        let object_result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
-                        println!("{}/{} ", bucket_prefix, object_result["Contents"][0].as_str().unwrap_or(&String::from_str("").unwrap()));
+                        for cap in re.captures_iter(&res.text().unwrap()) {
+                            println!("{}/{}", bucket_prefix, &cap[1]);
+                        }
                         res_list.push(res);
                     }
                 }
@@ -161,16 +166,27 @@ impl<'a> Handler<'a>  {
         res_list
     }
 
-    pub fn ls(&self) -> Response{
+    pub fn ls(&self, bucket:Option<&str>) -> Response{
         let mut res: Response;
-        match self.s3_type {
-            S3Type::AWS4 => {res =self.aws_v4_request("GET", "/", &Vec::new(),"");},
-            S3Type::AWS2 => {res = self.aws_v2_request("GET", "/", &Vec::new(),"");}
-        }
-        let result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
-        for bucket_list in  result[1].as_array(){
-            for bucket in bucket_list{
-                println!("S3://{} ", bucket["Name"].as_str().unwrap());
+        if bucket.is_some() {
+            let re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
+            match self.s3_type {
+                S3Type::AWS4 => {res = self.aws_v4_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(),"");},
+                S3Type::AWS2 => {res = self.aws_v2_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(),"");}
+            }
+            for cap in re.captures_iter(&res.text().unwrap()) {
+                println!("s3://{}/{}", bucket.unwrap(), &cap[1]);
+            }
+        } else {
+            match self.s3_type {
+                S3Type::AWS4 => {res = self.aws_v4_request("GET", "/", &Vec::new(),"");},
+                S3Type::AWS2 => {res = self.aws_v2_request("GET", "/", &Vec::new(),"");}
+            }
+            let result:serde_json::Value = serde_json::from_str(&res.text().unwrap()).unwrap();
+            for bucket_list in  result[1].as_array(){
+                for bucket in bucket_list{
+                    println!("S3://{} ", bucket["Name"].as_str().unwrap());
+                }
             }
         }
         res
