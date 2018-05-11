@@ -58,15 +58,15 @@ pub fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
 }
 
 //HashedPayload = Lowercase(HexEncode(Hash(requestPayload)))
-fn hash_payload(payload: &str) -> String {
+fn hash_payload(payload: &Vec<u8>) -> String {
     let mut sha = Sha256::new();
-    sha.input_str(payload);
+    sha.input(payload);
     debug!("payload request hash = {}", sha.result_str());
     sha.result_str()
 }
 
 
-fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&str) -> String {
+fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&Vec<u8>) -> String {
     let mut input = String::new();
     input.push_str(http_method);
     input.push_str("\n");
@@ -88,7 +88,7 @@ fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<
     sha.result_str()
 }
 
-pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&str, time_str:String) -> String {
+pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&Vec<u8>, time_str:String) -> String {
     let mut string_to_signed = String::from_str("AWS4-HMAC-SHA256\n").unwrap();
     string_to_signed.push_str(&time_str);
     string_to_signed.push_str("\n");
@@ -153,11 +153,11 @@ pub fn aws_s3_v2_sign(secret_key: &str, data: &str) -> String {
 // 	Date + "\n" +
 // 	CanonicalizedAmzHeaders +
 // 	CanonicalizedResource;
-pub fn aws_s3_v2_get_string_to_signed(http_method: &str, uri:&str, headers:&mut Vec<(&str, &str)>, content: &str) -> String {
+pub fn aws_s3_v2_get_string_to_signed(http_method: &str, uri:&str, headers:&mut Vec<(&str, &str)>, content: &Vec<u8>) -> String {
     let mut string_to_signed = String::from_str(http_method).unwrap();
     string_to_signed.push('\n');
-    if content != ""{
-        string_to_signed.push_str(&format!("{:x}", md5::compute(content.as_bytes())));
+    if content.len() > 0 {
+        string_to_signed.push_str(&format!("{:x}", md5::compute(content)));
     }
     string_to_signed.push('\n');
 
@@ -267,7 +267,7 @@ mod tests {
     fn test_hash_payload() {
         assert_eq!(
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-            hash_payload(""));
+            hash_payload(&Vec::new()));
     }
 
     #[test]
@@ -288,7 +288,7 @@ mod tests {
                 "/", 
                 &mut query_strings, 
                 &mut headers,
-                "",
+                &Vec::new(),
                 "20150830T123600Z".to_string());
 
         assert_eq!(
@@ -328,7 +328,7 @@ mod tests {
             "GET",
             "/johnsmith/photos/puppy.jpg", 
             &mut headers,
-            "");
+            &Vec::new());
 
         assert_eq!(
             "GET\n\
@@ -354,7 +354,7 @@ mod tests {
             "GET",
             "/johnsmith/photos/puppy.jpg", 
             &mut headers,
-            "");
+            &Vec::new());
         println!("string to signed: {}", string_need_signed);
         let sig = aws_s3_v2_sign("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", string_need_signed.as_str());
         assert_eq!("bWq2s1WEIj+Ydj0vQ697zp+IXMU=", sig);

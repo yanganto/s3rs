@@ -7,12 +7,14 @@ a **S3** **R**ich **S**upport client
 
 current status:  
 
-| function                    | descrrption                              | AWS4 | AWS2 | OSS |
-|-----------------------------|------------------------------------------|------|------|-----|
-| la                          | list objects                             | O    | O    | X   |
-| ls                          | list bucket                              | O    | O    | X   |
-| mb [bucket]                 | create bucket                            | O    | O    | X   |
-| rb [bucket]                 | delete bucket                            | O    | O    | X   |
-| /uri?query                  | give the orignal url                     | O    | O    | X   |
-| s3type [aws/aws4/aws2/ceph] | change the api for different S3 providor | O    | O    | X   |
-| log [trace/debug/info/erro] | change the log level                     | O    | O    | X   |
+| function                         | descrrption                              | AWS4 | AWS2 | OSS |
+|----------------------------------|------------------------------------------|------|------|-----|
+| la                               | list all objects                         | O    | O    | X   |
+| ls                               | list bucket                              | O    | O    | X   |
+| ls [bucket]                      | list objects in the bucket               | O    | O    | X   |
+| mb [bucket]                      | create bucket                            | O    | O    | X   |
+| rb [bucket]                      | delete bucket                            | O    | O    | X   |
+| put [file] s3://[bucket][object] | upload the file                          | O    | O    | X   |
+| /uri?query                       | give the orignal url                     | O    | O    | X   |
+| s3type [aws/aws4/aws2/ceph]      | change the api for different S3 providor | O    | O    | X   |
+| log [trace/debug/info/erro]      | change the log level                     | O    | O    | X   |

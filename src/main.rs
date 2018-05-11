@@ -219,6 +219,8 @@ fn main() {
             handler.la();
         } else if command.starts_with("ls"){
             handler.ls(command.split_whitespace().nth(1));
+        } else if command.starts_with("put"){
+            handler.put(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2).unwrap());
         } else if command.starts_with("mb"){
             handler.mb(command.split_whitespace().nth(1).unwrap());
         } else if command.starts_with("rb"){
