@@ -177,25 +177,6 @@ fn main() {
     let mut raw_input;
     let mut command = String::new(); 
 
-    fn print_response(res: &mut reqwest::Response){
-        if res.status() != StatusCode::Ok{
-            println!("Status: {}", res.status());
-            println!("Headers:\n{}", res.headers());
-            println!("Body:\n{}", &res.text().unwrap_or(String::from_str("").unwrap()));
-        } else {
-            debug!("Status: {}", res.status());
-            debug!("Headers:\n{}", res.headers());
-            debug!("Body:\n{}", &res.text().unwrap_or(String::from_str("").unwrap()));
-        }
-    }
-
-    fn print_multi_response(res_list: &mut Vec<reqwest::Response>){
-        for r in res_list{
-            print_response(r);
-            debug!("==========")
-        }
-    }
-
     fn change_s3_type(command: &str, handler: &mut handler::Handler){
         if command.ends_with("aws2"){
             handler.s3_type = handler::S3Type::AWS2;
@@ -216,13 +197,16 @@ fn main() {
         } else if command.ends_with("debug") {
             log::set_max_level(LevelFilter::Debug);
             println!("set up log level debug");
+        } else if command.ends_with("info") {
+            log::set_max_level(LevelFilter::Info);
+            println!("set up log level info");
         }else{
             println!("usage: log [trace/debug/info/error]");
         }
     }
 
     while command != "exit" {
-        print!("> ");
+        print!("s3rs> ");
         stdout().flush().expect("Could not flush stdout");
 
         raw_input = read_from_tty(|_buf, b, tty| {
@@ -232,15 +216,15 @@ fn main() {
         println!("");
         debug!("===== do command: {:?} =====", command);
         if command.starts_with("la"){
-            print_multi_response(&mut handler.la());
+            handler.la();
         } else if command.starts_with("ls"){
-            print_response(&mut handler.ls(command.split_whitespace().nth(1)));
+            handler.ls(command.split_whitespace().nth(1));
         } else if command.starts_with("mb"){
-            print_response(&mut handler.mb(command.split_whitespace().nth(1).unwrap()));
+            handler.mb(command.split_whitespace().nth(1).unwrap());
         } else if command.starts_with("rb"){
-            print_response(&mut handler.rb(command.split_whitespace().nth(1).unwrap()));
+            handler.rb(command.split_whitespace().nth(1).unwrap());
         } else if command.starts_with("/"){
-            print_response(&mut handler.url_command(&command));
+            handler.url_command(&command);
         } else if command.starts_with("s3type"){
             change_s3_type(&command, &mut handler);
         } else if command.starts_with("log"){ // XXX this should be better

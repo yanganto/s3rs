@@ -61,7 +61,7 @@ pub fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
 fn hash_payload(payload: &str) -> String {
     let mut sha = Sha256::new();
     sha.input_str(payload);
-    trace!("payload request hash = {}", sha.result_str());
+    debug!("payload request hash = {}", sha.result_str());
     sha.result_str()
 }
 
@@ -80,11 +80,11 @@ fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<
     input.push_str("\n");
     input.push_str(hash_payload(payload).as_str());
 
-    trace!("canonical request:\n{}", input);
+    debug!("canonical request:\n{}", input);
     
     let mut sha = Sha256::new();
     sha.input_str(input.as_str());
-    trace!("canonical request hash = {}", sha.result_str());
+    debug!("canonical request hash = {}", sha.result_str());
     sha.result_str()
 }
 
@@ -97,7 +97,7 @@ pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&
     }
     string_to_signed.push_str("\n");
     string_to_signed.push_str(aws_v4_canonical_request(http_method, uri, query_strings, headers, payload).as_str());
-    trace!("string_to_signed:\n{}", string_to_signed);
+    debug!("string_to_signed:\n{}", string_to_signed);
     return  string_to_signed
 }
 
@@ -111,31 +111,31 @@ pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String) -> String {
     mac.input(time_str.as_str().as_bytes());
     let result = mac.result();
     let code_bytes = result.code();
-    trace!("date_k = {}", code_bytes.to_hex());
+    debug!("date_k = {}", code_bytes.to_hex());
 
     let mut mac1 = Hmac::<sha2_256>::new(code_bytes);
     mac1.input(b"us-east-1");
     let result1 = mac1.result();
     let code_bytes1 = result1.code();
-    trace!("region_k = {}", code_bytes1.to_hex());
+    debug!("region_k = {}", code_bytes1.to_hex());
 
     let mut mac2 = Hmac::<sha2_256>::new(code_bytes1);
     mac2.input(b"iam");
     let result2 = mac2.result();
     let code_bytes2 = result2.code();
-    trace!("service_k = {}", code_bytes2.to_hex());
+    debug!("service_k = {}", code_bytes2.to_hex());
 
     let mut mac3 = Hmac::<sha2_256>::new(code_bytes2);
     mac3.input(b"aws4_request");
     let result3 = mac3.result();
     let code_bytes3 = result3.code();
-    trace!("signing_k = {}", code_bytes3.to_hex());
+    debug!("signing_k = {}", code_bytes3.to_hex());
 
     let mut mac4 = Hmac::<sha2_256>::new(code_bytes3);
     mac4.input(data.as_bytes());
     let result4 = mac4.result();
     let code_bytes4 = result4.code();
-    trace!("signature = {}", code_bytes4.to_hex());
+    debug!("signature = {}", code_bytes4.to_hex());
 
     code_bytes4.to_hex()
 }
@@ -188,7 +188,7 @@ pub fn aws_s3_v2_get_string_to_signed(http_method: &str, uri:&str, headers:&mut 
     string_to_signed.push('\n');
     string_to_signed.push_str(&canonical_amz_headers(headers));
     string_to_signed.push_str(uri);
-    trace!("string to signed:\n{}", string_to_signed);
+    debug!("string to signed:\n{}", string_to_signed);
     return  string_to_signed
 }
 
@@ -202,7 +202,7 @@ pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query
     string_to_signed.push_str("\n");
     let qs = canonical_query_string(query_strings);
     string_to_signed.push_str(qs.as_str());
-    trace!("QUERY_STRING={}", qs.as_str());
+    debug!("QUERY_STRING={}", qs.as_str());
     return  string_to_signed
 }
 
