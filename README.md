@@ -22,3 +22,17 @@ current status:
 |----------------------------------|---------------------------------------------|------|------|-----|-----|
 | s3type [aws/aws4/aws2/ceph/gcp]  | change the api for different S3 providor    | O    | O    | X   | X   |
 | log [trace/debug/info/erro]      | change the log level                        | O    | O    | X   | X   |
+|                                  | - Debug: for auth signature hash info       |      |      |     |     |
+|                                  | - Info: for Http header and body            |      |      |     |     |
+
+
+# Build Environment
+Please download and install Rust and Cargo (Rust package manager)
+[Install Rust](https://www.rust-lang.org/en-US/install.html)
+[Install Cargo](https://crates.io/)
+Clone the code
+`git clone https://github.com/yanganto/s3rs.git`
+
+
+# Build
+`Cargo build`
