@@ -31,7 +31,6 @@ use std::str;
 use std::str::FromStr;
 use std::io::stdout;
 use log::{Record, Level, Metadata, LevelFilter};
-use reqwest::StatusCode;
 
 static MY_LOGGER: MyLogger = MyLogger;
 
@@ -51,6 +50,18 @@ usage:
 
     rm <bucket name>
         delete bucket
+    
+    put <file> s3://<bucket>/<object>
+        upload file with specify object name
+
+    put <file> s3://<bucket>
+        upload file as the same file name
+
+    get  s3://<bucket>/<object> <file> 
+        download objects
+
+    get  s3://<bucket>/<object> 
+        download objects to current folder
 
     /<uri>?<query string>
         get uri command
@@ -200,12 +211,15 @@ fn main() {
         } else if command.ends_with("info") {
             log::set_max_level(LevelFilter::Info);
             println!("set up log level info");
+        } else if command.ends_with("error") {
+            log::set_max_level(LevelFilter::Error);
+            println!("set up log level error");
         }else{
             println!("usage: log [trace/debug/info/error]");
         }
     }
 
-    while command != "exit" {
+    while command != "exit" && command != "quit" {
         print!("s3rs> ");
         stdout().flush().expect("Could not flush stdout");
 
@@ -220,7 +234,15 @@ fn main() {
         } else if command.starts_with("ls"){
             handler.ls(command.split_whitespace().nth(1));
         } else if command.starts_with("put"){
-            handler.put(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2).unwrap());
+            match handler.put(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2).unwrap()) {
+                Err(e) => println!("{}", e),
+                _ => {}
+            };
+        } else if command.starts_with("get"){
+            match handler.get(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2)){
+                Err(e) => println!("{}", e),
+                _ => {}
+            };
         } else if command.starts_with("mb"){
             handler.mb(command.split_whitespace().nth(1).unwrap());
         } else if command.starts_with("rb"){
@@ -229,7 +251,7 @@ fn main() {
             handler.url_command(&command);
         } else if command.starts_with("s3type"){
             change_s3_type(&command, &mut handler);
-        } else if command.starts_with("log"){ // XXX this should be better
+        } else if command.starts_with("log"){ 
             change_log_type(&command);
         } else if command.starts_with("exit"){
             println!("Thanks for using, cya~");

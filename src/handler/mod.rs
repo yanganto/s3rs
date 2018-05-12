@@ -1,11 +1,13 @@
 use std;
-use std::fs::File;
+use std::fs::{File, write};
 use std::io::prelude::*;
 use chrono::prelude::*;
 use reqwest::{Response, header, Client, StatusCode};
 use std::str::FromStr;
 use serde_json;
 use regex::Regex;
+use std::path::Path;
+
 
 
 mod aws;
@@ -29,22 +31,23 @@ pub trait S3 {
     fn la(&self) -> Response;
 }
 
-fn print_response(res: &mut Response) -> String{
-    let body = res.text().unwrap_or("".to_string());
+fn print_response(res: &mut Response) -> Vec<u8>{
+    let mut body = Vec::new();
+    let _ =res.read_to_end(&mut body);
     if res.status() != StatusCode::Ok{
         println!("Status: {}", res.status());
         println!("Headers:\n{}", res.headers());
-        println!("Body:\n{}\n\n", &body);
+        println!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     } else {
         info!("Status: {}", res.status());
         info!("Headers:\n{}", res.headers());
-        info!("Body:\n{}\n\n", &body);
+        info!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     }
     body 
 }
 
 impl<'a> Handler<'a>  {
-    fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &Vec<u8>) -> String {
+    fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &Vec<u8>) -> Vec<u8>{
 
         let utc: DateTime<Utc> = Utc::now();   
         header! { (Date, "date") => [String] }
@@ -94,7 +97,7 @@ impl<'a> Handler<'a>  {
         }
         print_response(&mut res)
     }
-    fn aws_v4_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> String{
+    fn aws_v4_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Vec<u8>{
 
         let utc: DateTime<Utc> = Utc::now();   
         header! { (XAMZDate, "x-amz-date") => [String] }
@@ -156,8 +159,8 @@ impl<'a> Handler<'a>  {
         let re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
         let mut res: String;
         match self.s3_type {
-            S3Type::AWS4 => { res = self.aws_v4_request("GET", "/", &Vec::new(), Vec::new());},
-            S3Type::AWS2 => { res = self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new());}
+            S3Type::AWS4 => { res = std::str::from_utf8(&self.aws_v4_request("GET", "/", &Vec::new(), Vec::new())).unwrap_or("").to_string();},
+            S3Type::AWS2 => { res = std::str::from_utf8(&self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())). unwrap_or("").to_string();}
         }
         let result:serde_json::Value = serde_json::from_str(&res).unwrap();
         for bucket_list in  result[1].as_array(){
@@ -165,13 +168,13 @@ impl<'a> Handler<'a>  {
                 let bucket_prefix = format!("S3://{}", bucket["Name"].as_str().unwrap());
                 match self.s3_type {
                     S3Type::AWS4 => { 
-                        res = self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), Vec::new());
+                        res = std::str::from_utf8(&self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), Vec::new())).unwrap_or("").to_string();
                         for cap in re.captures_iter(&res) {
                             println!("{}/{}", bucket_prefix, &cap[1]);
                         }
                     },
                     S3Type::AWS2 => { 
-                        res = self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), &Vec::new());
+                        res = std::str::from_utf8(&self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), &Vec::new())).unwrap_or("").to_string();
                         for cap in re.captures_iter(&res) {
                             println!("{}/{}", bucket_prefix, &cap[1]);
                         }
@@ -186,16 +189,16 @@ impl<'a> Handler<'a>  {
         if bucket.is_some() {
             let re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
             match self.s3_type {
-                S3Type::AWS4 => {res = self.aws_v4_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(), Vec::new());},
-                S3Type::AWS2 => {res = self.aws_v2_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(), &Vec::new());}
+                S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(), Vec::new())).unwrap_or("").to_string();},
+                S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
             }
             for cap in re.captures_iter(&res) {
                 println!("s3://{}/{}", bucket.unwrap(), &cap[1]);
             }
         } else {
             match self.s3_type {
-                S3Type::AWS4 => {res = self.aws_v4_request("GET", "/", &Vec::new(), Vec::new());},
-                S3Type::AWS2 => {res = self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new());}
+                S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", "/", &Vec::new(), Vec::new())).unwrap_or("").to_string();},
+                S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
             }
             let result:serde_json::Value = serde_json::from_str(&res).unwrap();
             for bucket_list in  result[1].as_array(){
@@ -207,15 +210,44 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn put(&self, file:&str, dest:&str) -> std::io::Result<()> {
-        let re = Regex::new(r#"s3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
-        let caps = re.captures(dest).unwrap();
+        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        let caps = re.captures(dest).expect("S3 object format error.");
         let mut fin = File::open(file)?;
         let mut content = Vec::new();
         let _ = fin.read_to_end(&mut content);
 
+        let uri = if &caps["object"] == "" || &caps["object"] == "/" {
+            let file_name =  Path::new(file).file_name().unwrap().to_string_lossy();
+            format!("/{}/{}", &caps["bucket"], file_name)
+        } else {
+            format!("/{}{}", &caps["bucket"], &caps["object"])
+        };
+
         match self.s3_type {
-            S3Type::AWS4 => {self.aws_v4_request("PUT", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), content);},
-            S3Type::AWS2 => {self.aws_v2_request("PUT", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &content);}
+            S3Type::AWS4 => {self.aws_v4_request("PUT", &uri, &Vec::new(), content);},
+            S3Type::AWS2 => {self.aws_v2_request("PUT", &uri, &Vec::new(), &content);}
+        }
+        Ok(())
+    }
+
+    pub fn get(&self, src:&str, file:Option<&str>) -> Result<(), &'static str> {
+        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        let caps = re.captures(src).unwrap();
+
+        let fout = match file {
+            Some(fname) => fname,
+            None => {
+                Path::new(src).file_name().unwrap().to_str().unwrap_or("s3download")
+            }
+        };
+
+        if &caps["object"] == ""{
+            return Err("Please specific the object")
+        }
+
+        match self.s3_type {
+            S3Type::AWS4 => {write(fout, self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()));},
+            S3Type::AWS2 => {write(fout, self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()));}
         }
         Ok(())
     }
@@ -263,5 +295,4 @@ impl<'a> Handler<'a>  {
             S3Type::AWS2 => {self.aws_v2_request("GET", &uri, &query_strings, &Vec::new());}
         }
     }
-
 }
