@@ -157,7 +157,17 @@ fn main() {
     let mut s3rscfg = std::env::home_dir().unwrap();
     s3rscfg.push(".s3rs");
 
-    let mut f = File::open(s3rscfg).expect("s3rs config file not found");
+    let mut f;
+    if s3rscfg.exists() {
+        f = File::open(s3rscfg).expect("s3rs config file not found");
+    } else {
+        f = File::create(s3rscfg).expect("Can not write s3rs config file");
+        let _ = f.write_all(
+            b"[[credential]]\nhost = \"10.1.12.243\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\""
+            );
+        println!("Config file .s3rs is created in your home folder (~/.s3rs), please edit it and add your credentials");
+        return 
+    }
 
     let mut config_contents = String::new();
     f.read_to_string(&mut config_contents).expect("s3rs config is not readable");
@@ -236,12 +246,12 @@ fn main() {
         } else if command.starts_with("put"){
             match handler.put(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2).unwrap()) {
                 Err(e) => println!("{}", e),
-                _ => {}
+                Ok(_) => println!("upload completed")
             };
         } else if command.starts_with("get"){
             match handler.get(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2)){
                 Err(e) => println!("{}", e),
-                _ => {}
+                Ok(_) => println!("download completed")
             };
         } else if command.starts_with("mb"){
             handler.mb(command.split_whitespace().nth(1).unwrap());

@@ -2,6 +2,13 @@
 name = "s3rs"
 version = "0.1.0"
 authors = ["Antonio Yang <antonio.yang@siliconmotion.com.tw>"]
+description = "A s3 cli client with multi configs with diffent provider"
+keywords = ["S3", "Amazon", "ceph", "AWS"]
+categories = ["command-line-interface"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/yanganto/s3rs.git"
+
 
 [dependencies]
 interactor = "0.1.1"
@@ -13,7 +20,6 @@ hyper = "0.11.25"
 chrono = "0.4"
 rust-crypto = "0.2"
 hmac = "0.4.2"
-# sha2 = "0.7.1"
 sha2 = "0.6.0"
 base64 = "0.6.0"
 rustc-serialize = "0.3"
