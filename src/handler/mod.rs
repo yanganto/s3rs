@@ -186,26 +186,37 @@ impl<'a> Handler<'a>  {
 
     pub fn ls(&self, bucket:Option<&str>) {
         let res: String;
-        if bucket.is_some() {
-            let re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
-            match self.s3_type {
-                S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(), Vec::new())).unwrap_or("").to_string();},
-                S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", &format!("/{}", bucket.unwrap()), &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
-            }
-            for cap in re.captures_iter(&res) {
-                println!("s3://{}/{}", bucket.unwrap(), &cap[1]);
-            }
-        } else {
-            match self.s3_type {
-                S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", "/", &Vec::new(), Vec::new())).unwrap_or("").to_string();},
-                S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
-            }
-            let result:serde_json::Value = serde_json::from_str(&res).unwrap();
-            for bucket_list in  result[1].as_array(){
-                for bucket in bucket_list{
-                    println!("S3://{} ", bucket["Name"].as_str().unwrap());
+        match bucket {
+            Some(b) => {
+                let mut uri:String;
+                let mut re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)([A-Za-z0-9./]*)"#).unwrap();
+                if b.starts_with("s3://") || b.starts_with("S3://") {
+                    let caps = re.captures(b).expect("S3 object format error.");
+                    uri = format!("/{}", &caps["bucket"]);
+                } else {
+                    uri = format!("/{}", b);
                 }
-            }
+                re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
+                match self.s3_type {
+                    S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", &uri, &Vec::new(), Vec::new())).unwrap_or("").to_string();},
+                    S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
+                }
+                for cap in re.captures_iter(&res) {
+                    println!("s3:/{}/{}", uri, &cap[1]);
+                }
+            },
+            None => {
+                match self.s3_type {
+                    S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", "/", &Vec::new(), Vec::new())).unwrap_or("").to_string();},
+                    S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
+                }
+                let result:serde_json::Value = serde_json::from_str(&res).unwrap();
+                for bucket_list in  result[1].as_array(){
+                    for bucket in bucket_list{
+                        println!("S3://{} ", bucket["Name"].as_str().unwrap());
+                    }
+                }
+            } 
         }
     }
 

@@ -12,6 +12,7 @@ current status:
 | la                                | list all objects                            | O    | O    | X   | X   |
 | ls                                | list bucket                                 | O    | O    | X   | X   |
 | ls [bucket]                       | list objects in the bucket                  | O    | O    | X   | X   |
+| ls s3://[bucket]                  | list objects in the bucket                  | O    | O    | X   | X   |
 | mb [bucket]                       | create bucket                               | O    | O    | X   | X   |
 | rb [bucket]                       | delete bucket                               | O    | O    | X   | X   |
 | put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | O    | X   | X   |

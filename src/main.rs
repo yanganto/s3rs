@@ -238,7 +238,7 @@ fn main() {
         }, false, false).unwrap();
         command = String::from_utf8(raw_input).unwrap();
         println!("");
-        debug!("===== do command: {:?} =====", command);
+        debug!("===== do command: {} =====", command);
         if command.starts_with("la"){
             handler.la();
         } else if command.starts_with("ls"){
