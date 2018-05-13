@@ -41,3 +41,6 @@ Clone the code
 
 # Install from cargo
 `cargo install s3rs`
+
+# Demo
+- A short demo [video](https://youtu.be/LVFEb287CgI)
