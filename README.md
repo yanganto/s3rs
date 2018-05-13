@@ -28,14 +28,15 @@ current status:
 
 # Build Environment
 Please download and install Rust and Cargo (Rust package manager)
-[Install Rust](https://www.rust-lang.org/en-US/install.html)
-[Install Cargo](https://crates.io/)
+- [Install Rust](https://www.rust-lang.org/en-US/install.html)
+- [Install Cargo](https://crates.io/)
+
 Clone the code
 `git clone https://github.com/yanganto/s3rs.git`
 
 # Build
-`cargo build --release`
-The excutable binary will in `./target/release/s3rs`
+- `cargo build --release`
+- The excutable binary will in `./target/release/s3rs`
 
 # Install from cargo
 `cargo install s3rs`
