@@ -281,10 +281,19 @@ impl<'a> Handler<'a>  {
         }
 
         match self.s3_type {
-            S3Type::AWS4 => {write(fout, try!(self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new())));},
-            S3Type::AWS2 => {write(fout, try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new())));}
-        };
-        Ok(())
+            S3Type::AWS4 => {
+                match write(fout, try!(self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()))){
+                    Ok(_) => return Ok(()),
+                    Err(_) => return Err("write file error") //XXX
+                }
+            },
+            S3Type::AWS2 => {
+                match write(fout, try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()))){
+                    Ok(_) => return Ok(()),
+                    Err(_) => return Err("write file error") //XXX
+                }
+            }
+        }
     }
 
     pub fn mb(&self, bucket: &str) -> Result<(), &'static str> {
