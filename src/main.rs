@@ -229,6 +229,13 @@ fn main() {
         }
     }
 
+    fn print_if_error(result: Result<(),&str>) {
+        match result{
+            Err(e) => println!("{}", e),
+            Ok(_) => {}
+        };
+    }
+
     while command != "exit" && command != "quit" {
         print!("s3rs> ");
         stdout().flush().expect("Could not flush stdout");
@@ -240,9 +247,9 @@ fn main() {
         println!("");
         debug!("===== do command: {} =====", command);
         if command.starts_with("la"){
-            handler.la();
+            print_if_error(handler.la());
         } else if command.starts_with("ls"){
-            handler.ls(command.split_whitespace().nth(1));
+            print_if_error(handler.ls(command.split_whitespace().nth(1)));
         } else if command.starts_with("put"){
             match handler.put(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2).unwrap()) {
                 Err(e) => println!("{}", e),
@@ -254,11 +261,14 @@ fn main() {
                 Ok(_) => println!("download completed")
             };
         } else if command.starts_with("mb"){
-            handler.mb(command.split_whitespace().nth(1).unwrap());
+            print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("rb"){
-            handler.rb(command.split_whitespace().nth(1).unwrap());
+            print_if_error(handler.rb(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("/"){
-            handler.url_command(&command);
+            match handler.url_command(&command){
+                Err(e) => println!("{}", e),
+                Ok(_) => {}
+            };
         } else if command.starts_with("s3type"){
             change_s3_type(&command, &mut handler);
         } else if command.starts_with("log"){ 
