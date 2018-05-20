@@ -47,7 +47,7 @@ fn print_response(res: &mut Response) -> Vec<u8>{
 }
 
 impl<'a> Handler<'a>  {
-    fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &Vec<u8>) -> Vec<u8>{
+    fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &Vec<u8>) -> Result<Vec<u8>, &'static str>{
 
         let utc: DateTime<Utc> = Utc::now();   
         header! { (Date, "date") => [String] }
@@ -85,19 +85,22 @@ impl<'a> Handler<'a>  {
             .default_headers(headers)
             .build().unwrap();
 
-        let mut res: Response;
+        let mut action;
         match method {
-            "GET" => {res = client.get(query.as_str()).send().unwrap();},
-            "PUT" => {res = client.put(query.as_str()).send().unwrap();},
-            "DELETE" => {res = client.delete(query.as_str()).send().unwrap();},
+            "GET" => {action = client.get(query.as_str());},
+            "PUT" => {action = client.put(query.as_str());},
+            "DELETE" => {action = client.delete(query.as_str());},
             _ => {
                 error!("unspport HTTP verb");
-                res = client.get(query.as_str()).send().unwrap();
+                action = client.get(query.as_str());
             }
         }
-        print_response(&mut res)
+        match action.send(){
+            Ok(mut res) => Ok(print_response(&mut res)),
+            Err(_) => Err("Reqwest Error") //XXX
+        }
     }
-    fn aws_v4_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Vec<u8>{
+    fn aws_v4_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Result<Vec<u8>, &'static str>{
 
         let utc: DateTime<Utc> = Utc::now();   
         header! { (XAMZDate, "x-amz-date") => [String] }
@@ -143,24 +146,27 @@ impl<'a> Handler<'a>  {
             .default_headers(headers)
             .build().unwrap();
 
-        let mut res: Response;
+        let mut action;
         match method {
-            "GET" => {res = client.get(query.as_str()).send().unwrap();},
-            "PUT" => {res = client.put(query.as_str()).body(payload).send().unwrap();},
-            "DELETE" => {res = client.delete(query.as_str()).send().unwrap();},
+            "GET" => {action = client.get(query.as_str());},
+            "PUT" => {action = client.put(query.as_str()); action.body(payload);},
+            "DELETE" => {action = client.delete(query.as_str());},
             _ => {
                 error!("unspport HTTP verb");
-                res = client.get(query.as_str()).send().unwrap();
+                action = client.get(query.as_str());
             }
         }
-        print_response(&mut res)
+        match action.send(){
+            Ok(mut res) => Ok(print_response(&mut res)),
+            Err(_) => Err("Reqwest Error") //XXX
+        }
     }
-    pub fn la(&self) {
+    pub fn la(&self) -> Result<(), &'static str> {
         let re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
         let mut res: String;
         match self.s3_type {
-            S3Type::AWS4 => { res = std::str::from_utf8(&self.aws_v4_request("GET", "/", &Vec::new(), Vec::new())).unwrap_or("").to_string();},
-            S3Type::AWS2 => { res = std::str::from_utf8(&self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())). unwrap_or("").to_string();}
+            S3Type::AWS4 => { res = std::str::from_utf8(&try!(self.aws_v4_request("GET", "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
+            S3Type::AWS2 => { res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
         }
         let result:serde_json::Value = serde_json::from_str(&res).unwrap();
         for bucket_list in  result[1].as_array(){
@@ -168,23 +174,24 @@ impl<'a> Handler<'a>  {
                 let bucket_prefix = format!("S3://{}", bucket["Name"].as_str().unwrap());
                 match self.s3_type {
                     S3Type::AWS4 => { 
-                        res = std::str::from_utf8(&self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), Vec::new())).unwrap_or("").to_string();
+                        res = std::str::from_utf8(&try!(self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), Vec::new()))).unwrap_or("").to_string();
                         for cap in re.captures_iter(&res) {
                             println!("{}/{}", bucket_prefix, &cap[1]);
                         }
                     },
                     S3Type::AWS2 => { 
-                        res = std::str::from_utf8(&self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), &Vec::new())).unwrap_or("").to_string();
+                        res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), &Vec::new()))).unwrap_or("").to_string();
                         for cap in re.captures_iter(&res) {
                             println!("{}/{}", bucket_prefix, &cap[1]);
                         }
                     }
                 }
             }
-        }
+        };
+        Ok(())
     }
 
-    pub fn ls(&self, bucket:Option<&str>) {
+    pub fn ls(&self, bucket:Option<&str>)  -> Result<(), &'static str> {
         let res: String;
         match bucket {
             Some(b) => {
@@ -198,8 +205,8 @@ impl<'a> Handler<'a>  {
                 }
                 re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
                 match self.s3_type {
-                    S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", &uri, &Vec::new(), Vec::new())).unwrap_or("").to_string();},
-                    S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
+                    S3Type::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", &uri, &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
+                    S3Type::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
                 }
                 for cap in re.captures_iter(&res) {
                     println!("s3:/{}/{}", uri, &cap[1]);
@@ -207,8 +214,8 @@ impl<'a> Handler<'a>  {
             },
             None => {
                 match self.s3_type {
-                    S3Type::AWS4 => {res = std::str::from_utf8(&self.aws_v4_request("GET", "/", &Vec::new(), Vec::new())).unwrap_or("").to_string();},
-                    S3Type::AWS2 => {res = std::str::from_utf8(&self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())).unwrap_or("").to_string();}
+                    S3Type::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
+                    S3Type::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
                 }
                 let result:serde_json::Value = serde_json::from_str(&res).unwrap();
                 for bucket_list in  result[1].as_array(){
@@ -217,15 +224,29 @@ impl<'a> Handler<'a>  {
                     }
                 }
             } 
-        }
+        };
+        Ok(())
     }
 
-    pub fn put(&self, file:&str, dest:&str) -> std::io::Result<()> {
+    pub fn put(&self, file:&str, dest:&str) -> Result<(), &'static str> {
         let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
-        let caps = re.captures(dest).expect("S3 object format error.");
-        let mut fin = File::open(file)?;
-        let mut content = Vec::new();
-        let _ = fin.read_to_end(&mut content);
+        let caps = match re.captures(dest){
+            Some(c) => c,
+            None => return Err("S3 object format error.")
+        };
+        let mut content: Vec<u8>;
+
+
+        if !Path::new(file).exists() && file == "test"{ 
+            content = vec![83, 51, 82, 83, 32, 116, 101, 115, 116, 10];  // S3RS test/n
+        } else {
+            let mut fin = match File::open(file) {
+                Ok(f) => f,
+                Err(_) => return Err("input file open error")
+            };
+            content = Vec::new();
+            let _ = fin.read_to_end(&mut content);
+        }
 
         let uri = if &caps["object"] == "" || &caps["object"] == "/" {
             let file_name =  Path::new(file).file_name().unwrap().to_string_lossy();
@@ -235,15 +256,18 @@ impl<'a> Handler<'a>  {
         };
 
         match self.s3_type {
-            S3Type::AWS4 => {self.aws_v4_request("PUT", &uri, &Vec::new(), content);},
-            S3Type::AWS2 => {self.aws_v2_request("PUT", &uri, &Vec::new(), &content);}
-        }
+            S3Type::AWS4 => {try!(self.aws_v4_request("PUT", &uri, &Vec::new(), content));},
+            S3Type::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &content));}
+        };
         Ok(())
     }
 
     pub fn get(&self, src:&str, file:Option<&str>) -> Result<(), &'static str> {
         let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
-        let caps = re.captures(src).unwrap();
+        let caps = match re.captures(src) {
+            Some(c) => c,
+            None => return Err("S3 object format error.")
+        };
 
         let fout = match file {
             Some(fname) => fname,
@@ -257,31 +281,33 @@ impl<'a> Handler<'a>  {
         }
 
         match self.s3_type {
-            S3Type::AWS4 => {write(fout, self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()));},
-            S3Type::AWS2 => {write(fout, self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()));}
-        }
+            S3Type::AWS4 => {write(fout, try!(self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new())));},
+            S3Type::AWS2 => {write(fout, try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new())));}
+        };
         Ok(())
     }
 
-    pub fn mb(&self, bucket: &str) {
+    pub fn mb(&self, bucket: &str) -> Result<(), &'static str> {
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);
         match self.s3_type {
-            S3Type::AWS4 => {self.aws_v4_request("PUT", &uri, &Vec::new(), Vec::new());},
-            S3Type::AWS2 => {self.aws_v2_request("PUT", &uri, &Vec::new(), &Vec::new());}
-        }
+            S3Type::AWS4 => {try!(self.aws_v4_request("PUT", &uri, &Vec::new(), Vec::new()));},
+            S3Type::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &Vec::new()));}
+        };
+        Ok(())
     }
 
-    pub fn rb(&self, bucket: &str) {
+    pub fn rb(&self, bucket: &str) -> Result<(), &'static str> {
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);
         match self.s3_type {
-            S3Type::AWS4 => {self.aws_v4_request("DELETE", &uri, &Vec::new(), Vec::new());},
-            S3Type::AWS2 => {self.aws_v2_request("DELETE", &uri, &Vec::new(), &Vec::new());}
-        }
+            S3Type::AWS4 => {try!(self.aws_v4_request("DELETE", &uri, &Vec::new(), Vec::new()));},
+            S3Type::AWS2 => {try!(self.aws_v2_request("DELETE", &uri, &Vec::new(), &Vec::new()));}
+        };
+        Ok(())
     }
 
-    pub fn url_command(&self, url: &str) {
+    pub fn url_command(&self, url: &str) -> Result<(), &'static str>  {
         let mut uri = String::new();
         let mut raw_qs = String::new();
         let mut query_strings = Vec::new();
@@ -302,8 +328,9 @@ impl<'a> Handler<'a>  {
         }
 
         match self.s3_type {
-            S3Type::AWS4 => {self.aws_v4_request("GET", &uri, &query_strings, Vec::new());},
-            S3Type::AWS2 => {self.aws_v2_request("GET", &uri, &query_strings, &Vec::new());}
-        }
+            S3Type::AWS4 => {try!(self.aws_v4_request("GET", &uri, &query_strings, Vec::new()));},
+            S3Type::AWS2 => {try!(self.aws_v2_request("GET", &uri, &query_strings, &Vec::new()));}
+        };
+        Ok(())
     }
 }
