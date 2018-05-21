@@ -296,6 +296,33 @@ impl<'a> Handler<'a>  {
         }
     }
 
+    pub fn cat(&self, src:&str) -> Result<(), &'static str> {
+        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        let caps = match re.captures(src) {
+            Some(c) => c,
+            None => return Err("S3 object format error.")
+        };
+
+        if &caps["object"] == ""{
+            return Err("Please specific the object")
+        }
+
+        match self.s3_type {
+            S3Type::AWS4 => {
+                match self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()){
+                    Ok(b) => { println!("{}", std::str::from_utf8(&b).unwrap_or("")); return Ok(()) },
+                    Err(e) => return Err(e) 
+                }
+            },
+            S3Type::AWS2 => {
+                match self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()){
+                    Ok(b) => { println!("{}", std::str::from_utf8(&b).unwrap_or("")); return Ok(()) },
+                    Err(e) => return Err(e) 
+                }
+            }
+        }
+    }
+
     pub fn mb(&self, bucket: &str) -> Result<(), &'static str> {
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);

@@ -17,8 +17,10 @@ current status:
 | rb [bucket]                       | delete bucket                               | O    | O    | X   | X   |
 | put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | O    | X   | X   |
 | put [file] s3://[bucket]          | upload the file use file name as objec name | O    | O    | X   | X   |
+| put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | O    | X   | X   |
 | get s3://[bucket]/[object] file   | download objec                              | O    | O    | X   | X   |
 | get s3://[bucket]/[object]        | download objec in current folder            | O    | O    | X   | X   |
+| cat s3://[bucket]/[object]        | show the object content                     | O    | O    | X   | X   |
 | /uri?query                        | give the orignal url                        | O    | O    | X   | X   |
 |-----------------------------------|---------------------------------------------|------|------|-----|-----|
 | s3type [aws/aws4/aws2/ceph/gcp]   | change the api for different S3 providor    | O    | O    | X   | X   |

@@ -52,16 +52,22 @@ usage:
         delete bucket
     
     put <file> s3://<bucket>/<object>
-        upload file with specify object name
+        upload the file with specify object name
 
     put <file> s3://<bucket>
-        upload file as the same file name
+        upload the file as the same file name
+
+    put test s3://<bucket>/<object>
+        upload a test file with specify object name
 
     get  s3://<bucket>/<object> <file> 
-        download objects
+        download the object
 
     get  s3://<bucket>/<object> 
-        download objects to current folder
+        download the object to current folder
+
+    cat s3://<bucket>/<object> 
+        display the object content
 
     /<uri>?<query string>
         get uri command
@@ -260,6 +266,8 @@ fn main() {
                 Err(e) => println!("{}", e),
                 Ok(_) => println!("download completed")
             };
+        } else if command.starts_with("cat"){
+            print_if_error(handler.cat(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("mb"){
             print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("rb"){
