@@ -21,6 +21,7 @@ current status:
 | get s3://[bucket]/[object] file   | download objec                              | O    | O    | X   | X   |
 | get s3://[bucket]/[object]        | download objec in current folder            | O    | O    | X   | X   |
 | cat s3://[bucket]/[object]        | show the object content                     | O    | O    | X   | X   |
+| del s3://[bucket]/[object]        | delete the object                           | O    | O    | X   | X   |
 | /uri?query                        | give the orignal url                        | O    | O    | X   | X   |
 |-----------------------------------|---------------------------------------------|------|------|-----|-----|
 | s3type [aws/aws4/aws2/ceph/gcp]   | change the api for different S3 providor    | O    | O    | X   | X   |

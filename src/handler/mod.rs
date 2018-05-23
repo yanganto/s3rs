@@ -34,14 +34,14 @@ pub trait S3 {
 fn print_response(res: &mut Response) -> Vec<u8>{
     let mut body = Vec::new();
     let _ =res.read_to_end(&mut body);
-    if res.status() != StatusCode::Ok{
-        println!("Status: {}", res.status());
-        println!("Headers:\n{}", res.headers());
-        println!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
-    } else {
+    if res.status() == StatusCode::Ok || res.status() == StatusCode::NoContent {
         info!("Status: {}", res.status());
         info!("Headers:\n{}", res.headers());
         info!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
+    } else {
+        println!("Status: {}", res.status());
+        println!("Headers:\n{}", res.headers());
+        println!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     }
     body 
 }
@@ -321,6 +321,24 @@ impl<'a> Handler<'a>  {
                 }
             }
         }
+    }
+
+    pub fn del(&self, src:&str) -> Result<(), &'static str> {
+        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        let caps = match re.captures(src) {
+            Some(c) => c,
+            None => return Err("S3 object format error.")
+        };
+
+        if &caps["object"] == ""{
+            return Err("Please specific the object")
+        }
+
+        match self.s3_type {
+            S3Type::AWS4 => {try!(self.aws_v4_request("DELETE", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()));},
+            S3Type::AWS2 => {try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()));}
+        }
+        Ok(())
     }
 
     pub fn mb(&self, bucket: &str) -> Result<(), &'static str> {

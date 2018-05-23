@@ -69,6 +69,9 @@ usage:
     cat s3://<bucket>/<object> 
         display the object content
 
+    del s3://<bucket>/<object> 
+        delete the object
+
     /<uri>?<query string>
         get uri command
 
@@ -268,6 +271,11 @@ fn main() {
             };
         } else if command.starts_with("cat"){
             print_if_error(handler.cat(command.split_whitespace().nth(1).unwrap()));
+        } else if command.starts_with("del"){
+            match handler.del(command.split_whitespace().nth(1).unwrap()){
+                Err(e) => println!("{}", e),
+                Ok(_) => println!("deletion completed")
+            }
         } else if command.starts_with("mb"){
             print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap()));
         } else if command.starts_with("rb"){
