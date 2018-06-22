@@ -12,6 +12,10 @@ use std::path::Path;
 
 mod aws;
 
+static S3_FORMAT: &'static str = r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#;
+static RESPONSE_FORMAT: &'static str = r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#;
+
+
 pub enum S3Type{
     AWS4,
     AWS2,
@@ -162,7 +166,7 @@ impl<'a> Handler<'a>  {
         }
     }
     pub fn la(&self) -> Result<(), &'static str> {
-        let re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
+        let re = Regex::new(RESPONSE_FORMAT).unwrap();
         let mut res: String;
         match self.s3_type {
             S3Type::AWS4 => { res = std::str::from_utf8(&try!(self.aws_v4_request("GET", "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
@@ -196,14 +200,14 @@ impl<'a> Handler<'a>  {
         match bucket {
             Some(b) => {
                 let mut uri:String;
-                let mut re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)([A-Za-z0-9./]*)"#).unwrap();
+                let mut re = Regex::new(S3_FORMAT).unwrap();
                 if b.starts_with("s3://") || b.starts_with("S3://") {
                     let caps = re.captures(b).expect("S3 object format error.");
                     uri = format!("/{}", &caps["bucket"]);
                 } else {
                     uri = format!("/{}", b);
                 }
-                re = Regex::new(r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#).unwrap();
+                re = Regex::new(RESPONSE_FORMAT).unwrap();
                 match self.s3_type {
                     S3Type::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", &uri, &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
                     S3Type::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
@@ -229,7 +233,10 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn put(&self, file:&str, dest:&str) -> Result<(), &'static str> {
-        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        if file == "" || dest == "" {
+            return Err("please specify the file and the destiney")
+        }
+        let re = Regex::new(S3_FORMAT).unwrap();
         let caps = match re.captures(dest){
             Some(c) => c,
             None => return Err("S3 object format error.")
@@ -263,7 +270,8 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn get(&self, src:&str, file:Option<&str>) -> Result<(), &'static str> {
-        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        if src == "" { return Err("Please specify the object")}
+        let re = Regex::new(S3_FORMAT).unwrap();
         let caps = match re.captures(src) {
             Some(c) => c,
             None => return Err("S3 object format error.")
@@ -297,7 +305,8 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn cat(&self, src:&str) -> Result<(), &'static str> {
-        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        if src == "" {return Err("please specific the object")}
+        let re = Regex::new(S3_FORMAT).unwrap();
         let caps = match re.captures(src) {
             Some(c) => c,
             None => return Err("S3 object format error.")
@@ -324,7 +333,8 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn del(&self, src:&str) -> Result<(), &'static str> {
-        let re = Regex::new(r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>[A-Za-z0-9./]*)"#).unwrap();
+        if src == "" {return Err("please specific the object")}
+        let re = Regex::new(S3_FORMAT).unwrap();
         let caps = match re.captures(src) {
             Some(c) => c,
             None => return Err("S3 object format error.")
@@ -342,6 +352,7 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn mb(&self, bucket: &str) -> Result<(), &'static str> {
+        if bucket == "" {return Err("please specific the bucket name")}
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);
         match self.s3_type {
@@ -352,6 +363,7 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn rb(&self, bucket: &str) -> Result<(), &'static str> {
+        if bucket == "" {return Err("please specific the bucket name")}
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);
         match self.s3_type {

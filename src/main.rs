@@ -260,26 +260,25 @@ fn main() {
         } else if command.starts_with("ls"){
             print_if_error(handler.ls(command.split_whitespace().nth(1)));
         } else if command.starts_with("put"){
-            match handler.put(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2).unwrap()) {
+            match handler.put(command.split_whitespace().nth(1).unwrap_or(""), command.split_whitespace().nth(2).unwrap_or("")) {
                 Err(e) => println!("{}", e),
                 Ok(_) => println!("upload completed")
             };
         } else if command.starts_with("get"){
-            match handler.get(command.split_whitespace().nth(1).unwrap(), command.split_whitespace().nth(2)){
+            match handler.get(command.split_whitespace().nth(1).unwrap_or(""), command.split_whitespace().nth(2)){
                 Err(e) => println!("{}", e),
                 Ok(_) => println!("download completed")
             };
-        } else if command.starts_with("cat"){
-            print_if_error(handler.cat(command.split_whitespace().nth(1).unwrap()));
+        } else if command.starts_with("cat"){ print_if_error(handler.cat(command.split_whitespace().nth(1).unwrap_or("")));
         } else if command.starts_with("del"){
-            match handler.del(command.split_whitespace().nth(1).unwrap()){
+            match handler.del(command.split_whitespace().nth(1).unwrap_or("")){
                 Err(e) => println!("{}", e),
                 Ok(_) => println!("deletion completed")
             }
         } else if command.starts_with("mb"){
-            print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap()));
+            print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap_or("")));
         } else if command.starts_with("rb"){
-            print_if_error(handler.rb(command.split_whitespace().nth(1).unwrap()));
+            print_if_error(handler.rb(command.split_whitespace().nth(1).unwrap_or("")));
         } else if command.starts_with("/"){
             match handler.url_command(&command){
                 Err(e) => println!("{}", e),
