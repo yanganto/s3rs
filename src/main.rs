@@ -204,7 +204,7 @@ fn main() {
 
     println!("enter command, help for usage or exit for quit");
 
-    let mut raw_input;
+    // let mut raw_input;
     let mut command = String::new(); 
 
     fn change_s3_type(command: &str, handler: &mut handler::Handler){
@@ -245,15 +245,16 @@ fn main() {
         };
     }
 
+    let mut count = 0u32;
     while command != "exit" && command != "quit" {
-        print!("s3rs> ");
-        stdout().flush().expect("Could not flush stdout");
+        count += 1;
+        let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty").unwrap();
+        tty.flush().expect("Could not tty");
+        tty.write_all("s3rs> ".as_bytes());
+        let mut reader = BufReader::new(&tty);
+        let mut command_iter = reader.lines().map(|l| l.unwrap());
+        command = command_iter.next().unwrap();
 
-        raw_input = read_from_tty(|_buf, b, tty| {
-            tty.write(&[b]).expect("Could not write tty");
-        }, false, false).unwrap();
-        command = String::from_utf8(raw_input).unwrap();
-        println!("");
         debug!("===== do command: {} =====", command);
         if command.starts_with("la"){
             print_if_error(handler.la());
