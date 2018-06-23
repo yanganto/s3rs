@@ -1,3 +1,5 @@
+**This project is moved to gitlab** [gitlab repo link](https://gitlab.com/yanganto/s3rs)
+
 s3rs 
 ---
 a **S3** **R**ich **S**upport client
