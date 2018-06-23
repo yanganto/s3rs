@@ -3,31 +3,32 @@ s3rs
 a **S3** **R**ich **S**upport client
 (There are already a lot of tools, such as s3cmd, I just want to learn rust and radosgw)  
 - multi config
-- AWS4, AWS2, OSS, GCP support
+- AWS4, AWS2 support
+- TODO: OSS, GCP support
 
 current status:  
 
-| function                          | descrrption                                 | AWS4 | AWS2 | OSS | GCP |
-|-----------------------------------|---------------------------------------------|------|------|-----|-----|
-| la                                | list all objects                            | O    | O    | X   | X   |
-| ls                                | list bucket                                 | O    | O    | X   | X   |
-| ls [bucket]                       | list objects in the bucket                  | O    | O    | X   | X   |
-| ls s3://[bucket]                  | list objects in the bucket                  | O    | O    | X   | X   |
-| mb [bucket]                       | create bucket                               | O    | O    | X   | X   |
-| rb [bucket]                       | delete bucket                               | O    | O    | X   | X   |
-| put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | O    | X   | X   |
-| put [file] s3://[bucket]          | upload the file use file name as objec name | O    | O    | X   | X   |
-| put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | O    | X   | X   |
-| get s3://[bucket]/[object] file   | download objec                              | O    | O    | X   | X   |
-| get s3://[bucket]/[object]        | download objec in current folder            | O    | O    | X   | X   |
-| cat s3://[bucket]/[object]        | show the object content                     | O    | O    | X   | X   |
-| del s3://[bucket]/[object]        | delete the object                           | O    | O    | X   | X   |
-| /uri?query                        | give the orignal url                        | O    | O    | X   | X   |
-|-----------------------------------|---------------------------------------------|------|------|-----|-----|
-| s3type [aws/aws4/aws2/ceph/gcp]   | change the api for different S3 providor    | O    | O    | X   | X   |
-| log [trace/debug/info/erro]       | change the log level                        | O    | O    | X   | X   |
-|                                   | - Debug: for auth signature hash info       |      |      |     |     |
-|                                   | - Info: for Http header and body            |      |      |     |     |
+| function                          | descrrption                                 | AWS4 | AWS2 |
+|-----------------------------------|---------------------------------------------|------|------|
+| la                                | list all objects                            | O    | O    |
+| ls                                | list bucket                                 | O    | O    |
+| ls [bucket]                       | list objects in the bucket                  | O    | O    |
+| ls s3://[bucket]                  | list objects in the bucket                  | O    | O    |
+| mb [bucket]                       | create bucket                               | O    | O    |
+| rb [bucket]                       | delete bucket                               | O    | O    |
+| put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | O    |
+| put [file] s3://[bucket]          | upload the file use file name as objec name | O    | O    |
+| put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | O    |
+| get s3://[bucket]/[object] file   | download objec                              | O    | O    |
+| get s3://[bucket]/[object]        | download objec in current folder            | O    | O    |
+| cat s3://[bucket]/[object]        | show the object content                     | O    | O    |
+| del s3://[bucket]/[object]        | delete the object                           | O    | O    |
+| /uri?query                        | give the orignal url                        | O    | O    |
+|-----------------------------------|---------------------------------------------|------|------|
+| s3type [aws/aws4/aws2/ceph/gcp]   | change the api for different S3 providor    | O    | O    |
+| log [trace/debug/info/erro]       | change the log level                        | O    | O    |
+|                                   | - Debug: for auth signature hash info       |      |      |
+|                                   | - Info: for Http header and body            |      |      |
 
 
 # Build Environment
@@ -46,4 +47,4 @@ Clone the code
 `cargo install s3rs`
 
 # Demo
-- A short demo [video](https://youtu.be/LVFEb287CgI)
+- A short demo [video](https://youtu.be/DnWQbDmBFpg)
