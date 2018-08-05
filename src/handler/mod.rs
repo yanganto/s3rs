@@ -1,12 +1,15 @@
 use std;
 use std::fs::{File, write};
 use std::io::prelude::*;
+use std::str::FromStr;
+use std::path::Path;
+
 use chrono::prelude::*;
 use reqwest::{Response, header, Client, StatusCode};
-use std::str::FromStr;
 use serde_json;
 use regex::Regex;
-use std::path::Path;
+use quick_xml::Reader;
+use quick_xml::events::Event;
 
 
 
@@ -16,10 +19,13 @@ static S3_FORMAT: &'static str = r#"[sS]3://(?P<bucket>[A-Za-z0-9.]+)(?P<object>
 static RESPONSE_FORMAT: &'static str = r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#;
 
 
-pub enum S3Type{
+pub enum AuthType{
     AWS4,
     AWS2,
-    // OSS
+}
+pub enum Format{
+    JSON,
+    XML
 }
 
 
@@ -27,7 +33,8 @@ pub struct Handler<'a>{
     pub host: &'a str,
     pub access_key: &'a str,
     pub secrete_key: &'a str,
-    pub s3_type: S3Type
+    pub auth_type:AuthType,
+    pub format: Format
 }
 
 
@@ -64,9 +71,12 @@ impl<'a> Handler<'a>  {
             ("Date", time_str.as_str())
         ];
 
-        let mut query_strings = vec![
-            ("format", "json")
-        ];
+        let mut query_strings = vec![];
+        match self.format {
+            Format::JSON => {query_strings.push(("format", "json"))}
+            _ => {}
+        }
+
         query_strings.extend(qs.iter().cloned());
 
         let mut query = String::from_str("http://").unwrap();
@@ -117,9 +127,11 @@ impl<'a> Handler<'a>  {
             ("Host",self.host)
         ];
 
-        let mut query_strings = vec![
-            ("format", "json")
-        ];
+        let mut query_strings = vec![];
+        match self.format {
+            Format::JSON => {query_strings.push(("format", "json"))}
+            _ => {}
+        }
         query_strings.extend(qs.iter().cloned());
 
         let mut query = String::from_str("http://").unwrap();
@@ -168,25 +180,101 @@ impl<'a> Handler<'a>  {
     pub fn la(&self) -> Result<(), &'static str> {
         let re = Regex::new(RESPONSE_FORMAT).unwrap();
         let mut res: String;
-        match self.s3_type {
-            S3Type::AWS4 => { res = std::str::from_utf8(&try!(self.aws_v4_request("GET", "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
-            S3Type::AWS2 => { res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
+        match self.auth_type {
+            AuthType::AWS4 => { res = std::str::from_utf8(&try!(self.aws_v4_request("GET", "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
+            AuthType::AWS2 => { res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
         }
-        let result:serde_json::Value = serde_json::from_str(&res).unwrap();
-        for bucket_list in  result[1].as_array(){
-            for bucket in bucket_list{
-                let bucket_prefix = format!("S3://{}", bucket["Name"].as_str().unwrap());
-                match self.s3_type {
-                    S3Type::AWS4 => { 
-                        res = std::str::from_utf8(&try!(self.aws_v4_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), Vec::new()))).unwrap_or("").to_string();
-                        for cap in re.captures_iter(&res) {
-                            println!("{}/{}", bucket_prefix, &cap[1]);
+        let result:serde_json::Value;
+        let mut buckets = Vec::new();
+        match self.format {
+            Format::JSON => {
+                result = serde_json::from_str(&res).unwrap();
+                for bucket_list in  result[1].as_array(){
+                    for bucket in bucket_list{
+                        buckets.push(bucket["Name"].as_str().unwrap().to_string());
+                    }
+                }
+            },
+            Format::XML => {
+                let mut reader = Reader::from_str(&res);
+                let mut in_name_tag = false;
+                let mut buf = Vec::new();
+
+                loop {
+                    match reader.read_event(&mut buf) {
+                        Ok(Event::Start(ref e)) => {
+                            if e.name() == b"Name" { in_name_tag = true; }
+                        },
+                        Ok(Event::End(ref e)) => {
+                            if e.name() == b"Name" { in_name_tag = false; }
+                        },
+                        Ok(Event::Text(e)) => {
+                            if in_name_tag { buckets.push(e.unescape_and_decode(&reader).unwrap()); }
+                        },
+                        Ok(Event::Eof) => break, 
+                        Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                        _ => (), 
+                    }
+                    buf.clear();
+                }
+            }
+        }
+        for bucket in buckets{
+            let bucket_prefix = format!("S3://{}", bucket.as_str());
+            match self.auth_type {
+                AuthType::AWS4 => { 
+                    res = std::str::from_utf8(&try!(self.aws_v4_request("GET", &format!("/{}", bucket.as_str()), &Vec::new(), Vec::new()))).unwrap_or("").to_string();
+                    match self.format {
+                        Format::JSON => {
+                            for cap in re.captures_iter(&res) {
+                                println!("{}/{}", bucket_prefix, &cap[1]);
+                            }
+                        },
+                        Format::XML => {
+                            let mut reader = Reader::from_str(&res);
+                            let mut in_key_tag = false;
+                            let mut buf = Vec::new();
+
+                            loop {
+                                match reader.read_event(&mut buf) {
+                                    Ok(Event::Start(ref e)) => { if e.name() == b"Key" { in_key_tag = true; } },
+                                    Ok(Event::End(ref e)) => { if e.name() == b"Key" { in_key_tag = false; } },
+                                    Ok(Event::Text(e)) => { if in_key_tag { println!("{}/{}", bucket_prefix, e.unescape_and_decode(&reader).unwrap()); }
+                                    },
+                                    Ok(Event::Eof) => break, 
+                                    Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                                    _ => (), 
+                                }
+                                buf.clear();
+                            }
                         }
-                    },
-                    S3Type::AWS2 => { 
-                        res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}", bucket["Name"].as_str().unwrap()), &Vec::new(), &Vec::new()))).unwrap_or("").to_string();
-                        for cap in re.captures_iter(&res) {
-                            println!("{}/{}", bucket_prefix, &cap[1]);
+                    }
+                },
+                AuthType::AWS2 => { 
+                    res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}", bucket.as_str()), &Vec::new(), &Vec::new()))).unwrap_or("").to_string();
+                    match self.format {
+                        Format::JSON => {
+                            for cap in re.captures_iter(&res) {
+                                println!("{}/{}", bucket_prefix, &cap[1]);
+                            }
+                        },
+                        Format::XML => {
+                            let mut reader = Reader::from_str(&res);
+                            let mut in_key_tag = false;
+                            let mut buf = Vec::new();
+
+                            loop {
+                                match reader.read_event(&mut buf) {
+                                    Ok(Event::Start(ref e)) => { if e.name() == b"Key" { in_key_tag = true; } },
+                                    Ok(Event::End(ref e)) => { if e.name() == b"Key" { in_key_tag = false; } },
+                                    Ok(Event::Text(e)) => { if in_key_tag { println!("{}/{}", bucket_prefix, e.unescape_and_decode(&reader).unwrap()); }
+                                    },
+                                    Ok(Event::Eof) => break, 
+                                    Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                                    _ => (), 
+                                }
+                                buf.clear();
+                            }
                         }
                     }
                 }
@@ -208,23 +296,50 @@ impl<'a> Handler<'a>  {
                     uri = format!("/{}", b);
                 }
                 re = Regex::new(RESPONSE_FORMAT).unwrap();
-                match self.s3_type {
-                    S3Type::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", &uri, &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
-                    S3Type::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
+                match self.auth_type {
+                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", &uri, &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
+                    AuthType::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
                 }
                 for cap in re.captures_iter(&res) {
                     println!("s3:/{}/{}", uri, &cap[1]);
                 }
             },
             None => {
-                match self.s3_type {
-                    S3Type::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
-                    S3Type::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
+                match self.auth_type {
+                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
+                    AuthType::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
                 }
-                let result:serde_json::Value = serde_json::from_str(&res).unwrap();
-                for bucket_list in  result[1].as_array(){
-                    for bucket in bucket_list{
-                        println!("S3://{} ", bucket["Name"].as_str().unwrap());
+                match self.format {
+                    Format::JSON => {
+                        let result:serde_json::Value = serde_json::from_str(&res).unwrap();
+                        for bucket_list in  result[1].as_array(){
+                            for bucket in bucket_list{
+                                println!("S3://{} ", bucket["Name"].as_str().unwrap());
+                            }
+                        }
+                    },
+                    Format::XML => {
+                        let mut reader = Reader::from_str(&res);
+                        let mut in_name_tag = false;
+                        let mut buf = Vec::new();
+
+                        loop {
+                            match reader.read_event(&mut buf) {
+                                Ok(Event::Start(ref e)) => {
+                                    if e.name() == b"Name" { in_name_tag = true }
+                                },
+                                Ok(Event::End(ref e)) => {
+                                    if e.name() == b"Name" { in_name_tag = false }
+                                },
+                                Ok(Event::Text(e)) => {
+                                    if in_name_tag { println!("S3://{} ", e.unescape_and_decode(&reader).unwrap()) }
+                                },
+                                Ok(Event::Eof) => break, 
+                                Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                                _ => (), 
+                            }
+                            buf.clear();
+                        }
                     }
                 }
             } 
@@ -262,9 +377,9 @@ impl<'a> Handler<'a>  {
             format!("/{}{}", &caps["bucket"], &caps["object"])
         };
 
-        match self.s3_type {
-            S3Type::AWS4 => {try!(self.aws_v4_request("PUT", &uri, &Vec::new(), content));},
-            S3Type::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &content));}
+        match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("PUT", &uri, &Vec::new(), content));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &content));}
         };
         Ok(())
     }
@@ -288,14 +403,14 @@ impl<'a> Handler<'a>  {
             return Err("Please specific the object")
         }
 
-        match self.s3_type {
-            S3Type::AWS4 => {
+        match self.auth_type {
+            AuthType::AWS4 => {
                 match write(fout, try!(self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()))){
                     Ok(_) => return Ok(()),
                     Err(_) => return Err("write file error") //XXX
                 }
             },
-            S3Type::AWS2 => {
+            AuthType::AWS2 => {
                 match write(fout, try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()))){
                     Ok(_) => return Ok(()),
                     Err(_) => return Err("write file error") //XXX
@@ -316,14 +431,14 @@ impl<'a> Handler<'a>  {
             return Err("Please specific the object")
         }
 
-        match self.s3_type {
-            S3Type::AWS4 => {
+        match self.auth_type {
+            AuthType::AWS4 => {
                 match self.aws_v4_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()){
                     Ok(b) => { println!("{}", std::str::from_utf8(&b).unwrap_or("")); return Ok(()) },
                     Err(e) => return Err(e) 
                 }
             },
-            S3Type::AWS2 => {
+            AuthType::AWS2 => {
                 match self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()){
                     Ok(b) => { println!("{}", std::str::from_utf8(&b).unwrap_or("")); return Ok(()) },
                     Err(e) => return Err(e) 
@@ -344,9 +459,9 @@ impl<'a> Handler<'a>  {
             return Err("Please specific the object")
         }
 
-        match self.s3_type {
-            S3Type::AWS4 => {try!(self.aws_v4_request("DELETE", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()));},
-            S3Type::AWS2 => {try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()));}
+        match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("DELETE", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()));}
         }
         Ok(())
     }
@@ -355,9 +470,9 @@ impl<'a> Handler<'a>  {
         if bucket == "" {return Err("please specific the bucket name")}
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);
-        match self.s3_type {
-            S3Type::AWS4 => {try!(self.aws_v4_request("PUT", &uri, &Vec::new(), Vec::new()));},
-            S3Type::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &Vec::new()));}
+        match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("PUT", &uri, &Vec::new(), Vec::new()));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &Vec::new()));}
         };
         Ok(())
     }
@@ -366,9 +481,9 @@ impl<'a> Handler<'a>  {
         if bucket == "" {return Err("please specific the bucket name")}
         let mut uri = String::from_str("/").unwrap();
         uri.push_str(bucket);
-        match self.s3_type {
-            S3Type::AWS4 => {try!(self.aws_v4_request("DELETE", &uri, &Vec::new(), Vec::new()));},
-            S3Type::AWS2 => {try!(self.aws_v2_request("DELETE", &uri, &Vec::new(), &Vec::new()));}
+        match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("DELETE", &uri, &Vec::new(), Vec::new()));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("DELETE", &uri, &Vec::new(), &Vec::new()));}
         };
         Ok(())
     }
@@ -393,9 +508,9 @@ impl<'a> Handler<'a>  {
             }
         }
 
-        match self.s3_type {
-            S3Type::AWS4 => {try!(self.aws_v4_request("GET", &uri, &query_strings, Vec::new()));},
-            S3Type::AWS2 => {try!(self.aws_v2_request("GET", &uri, &query_strings, &Vec::new()));}
+        match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("GET", &uri, &query_strings, Vec::new()));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("GET", &uri, &query_strings, &Vec::new()));}
         };
         Ok(())
     }

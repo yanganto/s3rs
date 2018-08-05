@@ -1,34 +1,39 @@
 s3rs 
 ---
 a **S3** **R**ich **S**upport client
-(There are already a lot of tools, such as s3cmd, I just want to learn rust and radosgw)  
 - multi config
 - AWS4, AWS2 support
-- TODO: OSS, GCP support
+- TODO: implent region support (currently use us-east-1)and virtual-hosted-style
 
 current status:  
 
-| function                          | descrrption                                 | AWS4 | AWS2 |
-|-----------------------------------|---------------------------------------------|------|------|
-| la                                | list all objects                            | O    | O    |
-| ls                                | list bucket                                 | O    | O    |
-| ls [bucket]                       | list objects in the bucket                  | O    | O    |
-| ls s3://[bucket]                  | list objects in the bucket                  | O    | O    |
-| mb [bucket]                       | create bucket                               | O    | O    |
-| rb [bucket]                       | delete bucket                               | O    | O    |
-| put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | O    |
-| put [file] s3://[bucket]          | upload the file use file name as objec name | O    | O    |
-| put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | O    |
-| get s3://[bucket]/[object] file   | download objec                              | O    | O    |
-| get s3://[bucket]/[object]        | download objec in current folder            | O    | O    |
-| cat s3://[bucket]/[object]        | show the object content                     | O    | O    |
-| del s3://[bucket]/[object]        | delete the object                           | O    | O    |
-| /uri?query                        | give the orignal url                        | O    | O    |
-|-----------------------------------|---------------------------------------------|------|------|
-| s3type [aws/aws4/aws2/ceph/gcp]   | change the api for different S3 providor    | O    | O    |
-| log [trace/debug/info/erro]       | change the log level                        | O    | O    |
-|                                   | - Debug: for auth signature hash info       |      |      |
-|                                   | - Info: for Http header and body            |      |      |
+| function                          | descrrption                                 | CEPH | AWS |
+|-----------------------------------|---------------------------------------------|------|-----|
+| la                                | list all objects                            | O    | ?   |
+| ls                                | list bucket                                 | O    | ?   |
+| ls [bucket]                       | list objects in the bucket                  | O    | ?   |
+| ls s3://[bucket]                  | list objects in the bucket                  | O    | ?   |
+| mb [bucket]                       | create bucket                               | O    | ?   |
+| rb [bucket]                       | delete bucket                               | O    | ?   |
+| put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | ?   |
+| put [file] s3://[bucket]          | upload the file use file name as objec name | O    | ?   |
+| put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | ?   |
+| get s3://[bucket]/[object] file   | download objec                              | O    | ?   |
+| get s3://[bucket]/[object]        | download objec in current folder            | O    | ?   |
+| cat s3://[bucket]/[object]        | show the object content                     | O    | ?   |
+| del s3://[bucket]/[object]        | delete the object                           | O    | ?   |
+| /uri?query                        | give the orignal url                        | O    | ?   |
+|-----------------------------------|---------------------------------------------|------|-----|
+| s3\_type [ceph/aws/aws4/aws2]     | change the api for different S3 providor    |      |     |
+| log [trace/debug/info/erro]       | change the log level                        |      |     |
+|                                   | - Debug: for auth signature hash info       |      |     |
+|                                   | - Info: for Http header and body            |      |     |
+
+| s3 type  | auth type | format | virtual-hosted–style path-style |
+|----------|-----------|--------|---------------------------------|
+| ceph     | aws4      | json   | path style                      |
+| aws/aws4 | aws4      | xml    | path style                      |
+
 
 
 # Build Environment

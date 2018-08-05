@@ -193,6 +193,7 @@ pub fn aws_s3_v2_get_string_to_signed(http_method: &str, uri:&str, headers:&mut 
 }
 
 //  NOTE: This is V2 signature but not for S3 REST, Im not sure where to use
+#[cfg(test)]
 pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query_strings:&mut Vec<(&str, &str)>) -> String {
     let mut string_to_signed = String::from_str(http_method).unwrap();
     string_to_signed.push_str("\n");
@@ -207,6 +208,7 @@ pub fn aws_v2_get_string_to_signed(http_method: &str, host:&str, uri:&str, query
 }
 
 //  NOTE: This is V2 signature but not for S3 REST, Im not sure where to use
+#[cfg(test)]
 pub fn aws_v2_sign(secret_key: &str, data: &str) -> String {
     let mut mac = Hmac::<sha2_256>::new(secret_key.as_bytes());
     mac.input(data.as_bytes());

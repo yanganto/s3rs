@@ -20,6 +20,7 @@ extern crate md5;
 extern crate hmacsha1;
 extern crate serde_json;
 extern crate regex;
+extern crate quick_xml;
 
 
 mod handler;
@@ -104,9 +105,6 @@ impl log::Log for MyLogger {
     }
     fn flush(&self) {}
 }
-
-
-
 
 
 #[derive(Debug, Clone, Deserialize)]
@@ -199,7 +197,8 @@ fn main() {
         host: &credential.host,
         access_key: &credential.access_key,
         secrete_key: &credential.secrete_key,
-        s3_type: handler::S3Type::AWS4 // default use AWS4
+        auth_type: handler::AuthType::AWS4, // default use AWS4, used in CEPH
+        format: handler::Format::JSON// default use JSON, support in CEPH
     };
 
     println!("enter command, help for usage or exit for quit");
@@ -209,12 +208,16 @@ fn main() {
 
     fn change_s3_type(command: &str, handler: &mut handler::Handler){
         if command.ends_with("aws2"){
-            handler.s3_type = handler::S3Type::AWS2;
+            handler.auth_type = handler::AuthType::AWS2;
             println!("using aws version 2 protocol ");
-        } else if command.ends_with("aws4") || command.ends_with("aws") ||
-             command.ends_with("ceph") {
-            handler.s3_type = handler::S3Type::AWS4;
+        } else if command.ends_with("aws4") || command.ends_with("aws") {
+            handler.auth_type = handler::AuthType::AWS4;
+            handler.format = handler::Format::XML;
             println!("using aws verion 4 protocol ");
+        } else if command.ends_with("ceph") {
+            handler.auth_type = handler::AuthType::AWS4;
+            handler.format = handler::Format::JSON;
+            println!("using aws verion 4 protocol, and use json format");
         }else{
             println!("usage: s3type [aws/aws4/aws2/ceph]");
         }
@@ -285,7 +288,7 @@ fn main() {
                 Err(e) => println!("{}", e),
                 Ok(_) => {}
             };
-        } else if command.starts_with("s3type"){
+        } else if command.starts_with("s3_type"){
             change_s3_type(&command, &mut handler);
         } else if command.starts_with("log"){ 
             change_log_type(&command);
