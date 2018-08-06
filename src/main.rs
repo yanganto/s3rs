@@ -112,7 +112,8 @@ struct CredentialConfig {
     host: String,
     user: Option<String>,
     access_key: String,
-    secrete_key: String
+    secrete_key: String,
+    region: Option<String>
 }
 
 #[derive(Debug, Deserialize)]
@@ -125,7 +126,7 @@ impl <'a> Config {
         let credential = &self.credential.clone().unwrap();
         for cre in credential.into_iter(){
             let c = cre.clone();
-            let mut option = String::from(format!("{} {} ({})", c.host, c.user.unwrap_or(String::from("")), c.access_key));
+            let mut option = String::from(format!("{} ({}) {} ({})", c.host, c.region.unwrap_or(String::from("us-east-1")), c.user.unwrap_or(String::from("user")), c.access_key));
             display_list.push(option);
         }
         display_list
@@ -170,7 +171,7 @@ fn main() {
     } else {
         f = File::create(s3rscfg).expect("Can not write s3rs config file");
         let _ = f.write_all(
-            b"[[credential]]\nhost = \"10.1.12.243\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\""
+            b"[[credential]]\nhost = \"s3.us-east-3.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
             );
         println!("Config file .s3rs is created in your home folder (~/.s3rs), please edit it and add your credentials");
         return 
@@ -198,7 +199,8 @@ fn main() {
         access_key: &credential.access_key,
         secrete_key: &credential.secrete_key,
         auth_type: handler::AuthType::AWS4, // default use AWS4, used in CEPH
-        format: handler::Format::JSON// default use JSON, support in CEPH
+        format: handler::Format::XML, // default use XML, supported both in CEPH ans AWS
+        region: credential.region.clone()
     };
 
     println!("enter command, help for usage or exit for quit");
@@ -209,17 +211,18 @@ fn main() {
     fn change_s3_type(command: &str, handler: &mut handler::Handler){
         if command.ends_with("aws2"){
             handler.auth_type = handler::AuthType::AWS2;
-            println!("using aws version 2 protocol ");
+            handler.format = handler::Format::XML;
+            println!("using aws version 2 protocol, and use xml format");
         } else if command.ends_with("aws4") || command.ends_with("aws") {
             handler.auth_type = handler::AuthType::AWS4;
             handler.format = handler::Format::XML;
-            println!("using aws verion 4 protocol ");
+            println!("using aws verion 4 protocol, and use xml format");
         } else if command.ends_with("ceph") {
             handler.auth_type = handler::AuthType::AWS4;
             handler.format = handler::Format::JSON;
             println!("using aws verion 4 protocol, and use json format");
         }else{
-            println!("usage: s3type [aws/aws4/aws2/ceph]");
+            println!("usage: s3_type [aws/aws4/aws2/ceph]");
         }
     }
 
@@ -253,7 +256,7 @@ fn main() {
         count += 1;
         let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty").unwrap();
         tty.flush().expect("Could not tty");
-        tty.write_all("s3rs> ".as_bytes());
+        let _ = tty.write_all("s3rs> ".as_bytes());
         let mut reader = BufReader::new(&tty);
         let mut command_iter = reader.lines().map(|l| l.unwrap());
         command = command_iter.next().unwrap();

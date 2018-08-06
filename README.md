@@ -10,7 +10,7 @@ current status:
 | function                          | descrrption                                 | CEPH | AWS |
 |-----------------------------------|---------------------------------------------|------|-----|
 | la                                | list all objects                            | O    | ?   |
-| ls                                | list bucket                                 | O    | ?   |
+| ls                                | list bucket                                 | O    | O   |
 | ls [bucket]                       | list objects in the bucket                  | O    | ?   |
 | ls s3://[bucket]                  | list objects in the bucket                  | O    | ?   |
 | mb [bucket]                       | create bucket                               | O    | ?   |
@@ -29,10 +29,10 @@ current status:
 |                                   | - Debug: for auth signature hash info       |      |     |
 |                                   | - Info: for Http header and body            |      |     |
 
-| s3 type  | auth type | format | virtual-hosted–style path-style |
-|----------|-----------|--------|---------------------------------|
-| ceph     | aws4      | json   | path style                      |
-| aws/aws4 | aws4      | xml    | path style                      |
+| s3 type           | auth type | format | virtual-hosted–style path-style |
+|-------------------|-----------|--------|---------------------------------|
+| ceph              | aws4      | json   | path style                      |
+| aws/aws4(default) | aws4      | xml    | path style                      |
 
 
 

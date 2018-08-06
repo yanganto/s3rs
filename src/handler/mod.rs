@@ -34,7 +34,8 @@ pub struct Handler<'a>{
     pub access_key: &'a str,
     pub secrete_key: &'a str,
     pub auth_type:AuthType,
-    pub format: Format
+    pub format: Format,
+    pub region: Option<String>
 }
 
 
@@ -122,6 +123,10 @@ impl<'a> Handler<'a>  {
         let time_str = utc.format("%Y%m%dT%H%M%SZ").to_string();
         headers.set(XAMZDate(time_str.clone()));
 
+        header! { (XAMZContentSHA256, "x-amz-content-sha256") => [String] }
+        let payload_hash = aws::hash_payload(&payload);
+        headers.set(XAMZContentSHA256(payload_hash));
+
         let mut signed_headers = vec![
             ("X-AMZ-Date", time_str.as_str()),
             ("Host",self.host)
@@ -147,13 +152,18 @@ impl<'a> Handler<'a>  {
                                   &mut query_strings,
                                   &mut signed_headers,
                                   &payload,
-                                  utc.format("%Y%m%dT%H%M%SZ").to_string()).as_str(),
-                              utc.format("%Y%m%d").to_string());
+                                  utc.format("%Y%m%dT%H%M%SZ").to_string(),
+                                  self.region.clone(),
+                                  false).as_str(),
+                              utc.format("%Y%m%d").to_string(),
+                              self.region.clone(),
+                              false);
         let mut authorize_string = String::from_str("AWS4-HMAC-SHA256 Credential=").unwrap();
         authorize_string.push_str(self.access_key);
         authorize_string.push('/');
-        authorize_string.push_str(&format!("{}/us-east-1/iam/aws4_request, SignedHeaders={}, Signature={}",
+        authorize_string.push_str(&format!("{}/{}/s3/aws4_request, SignedHeaders={}, Signature={}",
                                            utc.format("%Y%m%d").to_string(),
+                                           self.region.clone().unwrap_or(String::from("us-east-1")),
                                            aws::signed_headers(&mut signed_headers), signature));
         headers.set(header::Authorization(authorize_string));
 

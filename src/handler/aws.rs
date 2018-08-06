@@ -58,7 +58,7 @@ pub fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
 }
 
 //HashedPayload = Lowercase(HexEncode(Hash(requestPayload)))
-fn hash_payload(payload: &Vec<u8>) -> String {
+pub fn hash_payload(payload: &Vec<u8>) -> String {
     let mut sha = Sha256::new();
     sha.input(payload);
     debug!("payload request hash = {}", sha.result_str());
@@ -88,12 +88,19 @@ fn aws_v4_canonical_request(http_method: &str, uri:&str, query_strings:&mut Vec<
     sha.result_str()
 }
 
-pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&Vec<u8>, time_str:String) -> String {
+pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&mut Vec<(&str, &str)>, headers:&mut Vec<(&str, &str)>, payload:&Vec<u8>, time_str:String, region: Option<String>, iam: bool) -> String {
     let mut string_to_signed = String::from_str("AWS4-HMAC-SHA256\n").unwrap();
     string_to_signed.push_str(&time_str);
     string_to_signed.push_str("\n");
+    let endpoint_type = match iam {
+        true => "iam",
+        false => "s3"
+    };
     unsafe{
-        string_to_signed.push_str(&format!("{}/us-east-1/iam/aws4_request", time_str.slice_unchecked(0,8)));
+        match region {
+            Some(r) => string_to_signed.push_str(&format!("{}/{}/{}/aws4_request", time_str.slice_unchecked(0,8), r, endpoint_type)),
+            None => string_to_signed.push_str(&format!("{}/us-east-1/{}/aws4_request", time_str.slice_unchecked(0,8), endpoint_type))
+        }
     }
     string_to_signed.push_str("\n");
     string_to_signed.push_str(aws_v4_canonical_request(http_method, uri, query_strings, headers, payload).as_str());
@@ -103,7 +110,7 @@ pub fn aws_v4_get_string_to_signed(http_method: &str, uri:&str,  query_strings:&
 
 
 // HMAC(HMAC(HMAC(HMAC("AWS4" + kSecret,"20150830"),"us-east-1"),"iam"),"aws4_request")
-pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String) -> String {
+pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String, region: Option<String>, iam: bool) -> String {
     let mut key = String::from("AWS4");
     key.push_str(secret_key);
 
@@ -114,13 +121,19 @@ pub fn aws_v4_sign(secret_key: &str, data: &str, time_str: String) -> String {
     debug!("date_k = {}", code_bytes.to_hex());
 
     let mut mac1 = Hmac::<sha2_256>::new(code_bytes);
-    mac1.input(b"us-east-1");
+    match region {
+        None => mac1.input(b"us-east-1"),
+        Some(r) => mac1.input(r.as_bytes())
+    }
     let result1 = mac1.result();
     let code_bytes1 = result1.code();
     debug!("region_k = {}", code_bytes1.to_hex());
 
     let mut mac2 = Hmac::<sha2_256>::new(code_bytes1);
-    mac2.input(b"iam");
+    match iam {
+        true => mac2.input(b"iam"),
+        false => mac2.input(b"s3")
+    }
     let result2 = mac2.result();
     let code_bytes2 = result2.code();
     debug!("service_k = {}", code_bytes2.to_hex());
@@ -291,7 +304,9 @@ mod tests {
                 &mut query_strings, 
                 &mut headers,
                 &Vec::new(),
-                "20150830T123600Z".to_string());
+                "20150830T123600Z".to_string(),
+                Some(String::from("us-east-1")),
+                true);
 
         assert_eq!(
             "AWS4-HMAC-SHA256\n\
@@ -309,8 +324,9 @@ mod tests {
                               20150830T123600Z\n\
                               20150830/us-east-1/iam/aws4_request\n\
                               f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59",
-                              "20150830".to_string()
-                              );
+                              "20150830".to_string(),
+                              Some(String::from("us-east-1")),
+                              true);
 
         assert_eq!("5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7", sig.as_str());
     }
