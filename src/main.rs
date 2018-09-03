@@ -2,7 +2,6 @@ extern crate toml;
 #[macro_use]
 extern crate serde_derive;
 extern crate interactor; 
-use interactor::read_from_tty; 
 extern crate reqwest;
 
 #[macro_use] 
@@ -84,8 +83,14 @@ usage:
         trace for request auth detail
         debug for request header, status code, raw body
 
-    s3_type <aws2/aws4/aws/oss>
-        change the auth type for different S3 service
+    s3_type <aws/ceph>
+        change the auth type and format for different S3 service
+
+    auth_type <aws2/aws4>
+        change the auth type 
+
+    format <xml/json>
+        change the request format
 
     exit
         quit the programe
@@ -154,7 +159,6 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
     let idx = try!(read_parse::<usize>(&mut tty, prompt, 1, items.len())) - 1;
     Ok(idx)
 }
-
 		
 fn main() {
 
@@ -208,24 +212,6 @@ fn main() {
     // let mut raw_input;
     let mut command = String::new(); 
 
-    fn change_s3_type(command: &str, handler: &mut handler::Handler){
-        if command.ends_with("aws2"){
-            handler.auth_type = handler::AuthType::AWS2;
-            handler.format = handler::Format::XML;
-            println!("using aws version 2 protocol, and use xml format");
-        } else if command.ends_with("aws4") || command.ends_with("aws") {
-            handler.auth_type = handler::AuthType::AWS4;
-            handler.format = handler::Format::XML;
-            println!("using aws verion 4 protocol, and use xml format");
-        } else if command.ends_with("ceph") {
-            handler.auth_type = handler::AuthType::AWS4;
-            handler.format = handler::Format::JSON;
-            println!("using aws verion 4 protocol, and use json format");
-        }else{
-            println!("usage: s3_type [aws/aws4/aws2/ceph]");
-        }
-    }
-
     fn change_log_type(command: &str) {
         if command.ends_with("trace") {
             log::set_max_level(LevelFilter::Trace);
@@ -251,13 +237,11 @@ fn main() {
         };
     }
 
-    let mut count = 0u32;
     while command != "exit" && command != "quit" {
-        count += 1;
         let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty").unwrap();
         tty.flush().expect("Could not tty");
         let _ = tty.write_all("s3rs> ".as_bytes());
-        let mut reader = BufReader::new(&tty);
+        let reader = BufReader::new(&tty);
         let mut command_iter = reader.lines().map(|l| l.unwrap());
         command = command_iter.next().unwrap();
 
@@ -292,7 +276,11 @@ fn main() {
                 Ok(_) => {}
             };
         } else if command.starts_with("s3_type"){
-            change_s3_type(&command, &mut handler);
+            handler.change_s3_type(&command);
+        } else if command.starts_with("auth_type"){
+            handler.change_auth_type(&command);
+        } else if command.starts_with("format"){
+            handler.change_format_type(&command);
         } else if command.starts_with("log"){ 
             change_log_type(&command);
         } else if command.starts_with("exit"){

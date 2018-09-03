@@ -524,4 +524,42 @@ impl<'a> Handler<'a>  {
         };
         Ok(())
     }
+
+    pub fn change_s3_type(&mut self, command: &str){
+        if command.ends_with("aws"){
+            self.auth_type = AuthType::AWS4;
+            self.format = Format::XML;
+            println!("using aws verion 4 protocol, and use xml format");
+        } else if command.ends_with("ceph") {
+            self.auth_type = AuthType::AWS4;
+            self.format = Format::JSON;
+            println!("using aws verion 4 protocol, and use json format");
+        }else{
+            println!("usage: s3_type [aws/ceph]");
+        }
+    }
+
+    pub fn change_auth_type(&mut self, command: &str){
+        if command.ends_with("aws2"){
+            self.auth_type = AuthType::AWS2;
+            println!("using aws version 2 protocol");
+        } else if command.ends_with("aws4") || command.ends_with("aws") {
+            self.auth_type = AuthType::AWS4;
+            println!("using aws verion 4 protocol");
+        }else{
+            println!("usage: auth_type [aws4/aws2]");
+        }
+    }
+
+    pub fn change_format_type(&mut self, command: &str){
+        if command.ends_with("xml"){
+            self.format = Format::XML;
+            println!("using xml format");
+        } else if command.ends_with("json") {
+            self.format = Format::JSON;
+            println!("using json format");
+        }else{
+            println!("usage: format_type [xml/json]");
+        }
+    }
 }
