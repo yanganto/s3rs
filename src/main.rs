@@ -204,6 +204,7 @@ fn main() {
         secrete_key: &credential.secrete_key,
         auth_type: handler::AuthType::AWS4, // default use AWS4, used in CEPH
         format: handler::Format::XML, // default use XML, supported both in CEPH ans AWS
+        url_style: handler::UrlStyle::PATH, // default use PATH
         region: credential.region.clone()
     };
 
@@ -281,6 +282,8 @@ fn main() {
             handler.change_auth_type(&command);
         } else if command.starts_with("format"){
             handler.change_format_type(&command);
+        } else if command.starts_with("url_style"){
+            handler.change_url_style(&command);
         } else if command.starts_with("log"){ 
             change_log_type(&command);
         } else if command.starts_with("exit"){
