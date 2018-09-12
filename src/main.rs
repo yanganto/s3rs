@@ -2,7 +2,6 @@ extern crate toml;
 #[macro_use]
 extern crate serde_derive;
 extern crate interactor; 
-use interactor::read_from_tty; 
 extern crate reqwest;
 
 #[macro_use] 
@@ -20,6 +19,7 @@ extern crate md5;
 extern crate hmacsha1;
 extern crate serde_json;
 extern crate regex;
+extern crate quick_xml;
 
 
 mod handler;
@@ -83,8 +83,14 @@ usage:
         trace for request auth detail
         debug for request header, status code, raw body
 
-    s3_type <aws2/aws4/aws/oss>
-        change the auth type for different S3 service
+    s3_type <aws/ceph>
+        change the auth type and format for different S3 service
+
+    auth_type <aws2/aws4>
+        change the auth type 
+
+    format <xml/json>
+        change the request format
 
     exit
         quit the programe
@@ -106,15 +112,13 @@ impl log::Log for MyLogger {
 }
 
 
-
-
-
 #[derive(Debug, Clone, Deserialize)]
 struct CredentialConfig {
     host: String,
     user: Option<String>,
     access_key: String,
-    secrete_key: String
+    secrete_key: String,
+    region: Option<String>
 }
 
 #[derive(Debug, Deserialize)]
@@ -127,7 +131,7 @@ impl <'a> Config {
         let credential = &self.credential.clone().unwrap();
         for cre in credential.into_iter(){
             let c = cre.clone();
-            let mut option = String::from(format!("{} {} ({})", c.host, c.user.unwrap_or(String::from("")), c.access_key));
+            let mut option = String::from(format!("{} ({}) {} ({})", c.host, c.region.unwrap_or(String::from("us-east-1")), c.user.unwrap_or(String::from("user")), c.access_key));
             display_list.push(option);
         }
         display_list
@@ -155,7 +159,6 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
     let idx = try!(read_parse::<usize>(&mut tty, prompt, 1, items.len())) - 1;
     Ok(idx)
 }
-
 		
 fn main() {
 
@@ -172,7 +175,7 @@ fn main() {
     } else {
         f = File::create(s3rscfg).expect("Can not write s3rs config file");
         let _ = f.write_all(
-            b"[[credential]]\nhost = \"10.1.12.243\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\""
+            b"[[credential]]\nhost = \"s3.us-east-3.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
             );
         println!("Config file .s3rs is created in your home folder (~/.s3rs), please edit it and add your credentials");
         return 
@@ -199,26 +202,16 @@ fn main() {
         host: &credential.host,
         access_key: &credential.access_key,
         secrete_key: &credential.secrete_key,
-        s3_type: handler::S3Type::AWS4 // default use AWS4
+        auth_type: handler::AuthType::AWS4, // default use AWS4, used in CEPH
+        format: handler::Format::XML, // default use XML, supported both in CEPH ans AWS
+        url_style: handler::UrlStyle::PATH, // default use PATH
+        region: credential.region.clone()
     };
 
     println!("enter command, help for usage or exit for quit");
 
     // let mut raw_input;
     let mut command = String::new(); 
-
-    fn change_s3_type(command: &str, handler: &mut handler::Handler){
-        if command.ends_with("aws2"){
-            handler.s3_type = handler::S3Type::AWS2;
-            println!("using aws version 2 protocol ");
-        } else if command.ends_with("aws4") || command.ends_with("aws") ||
-             command.ends_with("ceph") {
-            handler.s3_type = handler::S3Type::AWS4;
-            println!("using aws verion 4 protocol ");
-        }else{
-            println!("usage: s3type [aws/aws4/aws2/ceph]");
-        }
-    }
 
     fn change_log_type(command: &str) {
         if command.ends_with("trace") {
@@ -245,13 +238,11 @@ fn main() {
         };
     }
 
-    let mut count = 0u32;
     while command != "exit" && command != "quit" {
-        count += 1;
         let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty").unwrap();
         tty.flush().expect("Could not tty");
-        tty.write_all("s3rs> ".as_bytes());
-        let mut reader = BufReader::new(&tty);
+        let _ = tty.write_all("s3rs> ".as_bytes());
+        let reader = BufReader::new(&tty);
         let mut command_iter = reader.lines().map(|l| l.unwrap());
         command = command_iter.next().unwrap();
 
@@ -285,8 +276,14 @@ fn main() {
                 Err(e) => println!("{}", e),
                 Ok(_) => {}
             };
-        } else if command.starts_with("s3type"){
-            change_s3_type(&command, &mut handler);
+        } else if command.starts_with("s3_type"){
+            handler.change_s3_type(&command);
+        } else if command.starts_with("auth_type"){
+            handler.change_auth_type(&command);
+        } else if command.starts_with("format"){
+            handler.change_format_type(&command);
+        } else if command.starts_with("url_style"){
+            handler.change_url_style(&command);
         } else if command.starts_with("log"){ 
             change_log_type(&command);
         } else if command.starts_with("exit"){
