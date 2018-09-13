@@ -18,10 +18,10 @@ current status:
 | put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | 0   |
 | put [file] s3://[bucket]          | upload the file use file name as objec name | O    | O   |
 | put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | O   |
-| get s3://[bucket]/[object] file   | download objec                              | O    | X   |
-| get s3://[bucket]/[object]        | download objec in current folder            | O    | X   |
-| cat s3://[bucket]/[object]        | show the object content                     | O    | X   |
-| del s3://[bucket]/[object]        | delete the object                           | O    | ?   |
+| get s3://[bucket]/[object] file   | download objec                              | O    | O   |
+| get s3://[bucket]/[object]        | download objec in current folder            | O    | O   |
+| cat s3://[bucket]/[object]        | show the object content                     | O    | O   |
+| del s3://[bucket]/[object]        | delete the object                           | O    | O   |
 | /uri?query                        | give the orignal url                        | O    | ?   |
 |-----------------------------------|---------------------------------------------|------|-----|
 | s3\_type [ceph/aws/aws4/aws2]     | change the api for different S3 providor    |      |     |
