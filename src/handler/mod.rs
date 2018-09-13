@@ -332,7 +332,7 @@ impl<'a> Handler<'a>  {
                     uri = format!("/{}", b);
                 }
                 match self.auth_type {
-                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", vitural_host, &uri, &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
+                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", vitural_host.clone(), &uri, &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
                     AuthType::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
                 }
                 match self.format {
@@ -356,7 +356,7 @@ impl<'a> Handler<'a>  {
                                     if e.name() == b"Key" { in_key_tag = false }
                                 },
                                 Ok(Event::Text(e)) => {
-                                    if in_key_tag { println!("S3://{} ", e.unescape_and_decode(&reader).unwrap()) }
+                                    if in_key_tag { println!("S3://{}/{} ", vitural_host.clone().unwrap_or(uri.to_string()),e.unescape_and_decode(&reader).unwrap()) }
                                 },
                                 Ok(Event::Eof) => break, 
                                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),

@@ -4,25 +4,25 @@ s3rs
 ---
 a **S3** **R**ich **S**upport client
 - multi config
+- interactive command line tool
 - AWS4, AWS2 support
-- TODO: implent region support (currently use us-east-1)and virtual-hosted-style
 
 current status:  
 
 | function                          | descrrption                                 | CEPH | AWS |
 |-----------------------------------|---------------------------------------------|------|-----|
-| la                                | list all objects                            | O    | ?   |
+| la                                | list all objects                            | O    | O   |
 | ls                                | list bucket                                 | O    | O   |
-| ls [bucket]                       | list objects in the bucket                  | O    | ?   |
-| ls s3://[bucket]                  | list objects in the bucket                  | O    | ?   |
-| mb [bucket]                       | create bucket                               | O    | ?   |
-| rb [bucket]                       | delete bucket                               | O    | ?   |
-| put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | ?   |
-| put [file] s3://[bucket]          | upload the file use file name as objec name | O    | ?   |
-| put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | ?   |
-| get s3://[bucket]/[object] file   | download objec                              | O    | ?   |
-| get s3://[bucket]/[object]        | download objec in current folder            | O    | ?   |
-| cat s3://[bucket]/[object]        | show the object content                     | O    | ?   |
+| ls [bucket]                       | list objects in the bucket                  | O    | O   |
+| ls s3://[bucket]                  | list objects in the bucket                  | O    | O   |
+| mb [bucket]                       | create bucket                               | O    | X   |
+| rb [bucket]                       | delete bucket                               | O    | X   |
+| put [file] s3://[bucket]/[object] | upload the file sepcific object name        | O    | 0   |
+| put [file] s3://[bucket]          | upload the file use file name as objec name | O    | O   |
+| put test s3://[bucket]/[object]   | upload a test file sepcific object name     | O    | O   |
+| get s3://[bucket]/[object] file   | download objec                              | O    | X   |
+| get s3://[bucket]/[object]        | download objec in current folder            | O    | X   |
+| cat s3://[bucket]/[object]        | show the object content                     | O    | X   |
 | del s3://[bucket]/[object]        | delete the object                           | O    | ?   |
 | /uri?query                        | give the orignal url                        | O    | ?   |
 |-----------------------------------|---------------------------------------------|------|-----|
@@ -31,10 +31,10 @@ current status:
 |                                   | - Debug: for auth signature hash info       |      |     |
 |                                   | - Info: for Http header and body            |      |     |
 
-| s3 type           | auth type | format | virtual-hosted–style path-style |
-|-------------------|-----------|--------|---------------------------------|
-| ceph              | aws4      | json   | path style                      |
-| aws/aws4(default) | aws4      | xml    | path style                      |
+| s3 type | auth type | format | virtual-hosted–style path-style |
+|---------|-----------|--------|---------------------------------|
+| ceph    | aws4      | json   | path-style                      |
+| aws     | aws4      | xml    | virtual-hosted–style            |
 
 
 
