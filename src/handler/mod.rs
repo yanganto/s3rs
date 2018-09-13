@@ -15,8 +15,8 @@ use quick_xml::events::Event;
 
 mod aws;
 
-static S3_FORMAT: &'static str = r#"[sS]3://(?P<bucket>[A-Za-z0-9\-.]+)(?P<object>[A-Za-z0-9./]*)"#;
-static RESPONSE_FORMAT: &'static str = r#""Contents":\["([A-Za-z0-9.]+?)"(.*?)\]"#;
+static S3_FORMAT: &'static str = r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
+static RESPONSE_FORMAT: &'static str = r#""Contents":\["([A-Za-z0-9\-\._]+?)"(.*?)\]"#;
 
 
 pub enum AuthType{
@@ -450,6 +450,8 @@ impl<'a> Handler<'a>  {
     pub fn get(&self, src:&str, file:Option<&str>) -> Result<(), &'static str> {
         if src == "" { return Err("Please specify the object")}
         let re = Regex::new(S3_FORMAT).unwrap();
+        let mut virtural_host = None;
+        let uri:String;
         let caps = match re.captures(src) {
             Some(c) => c,
             None => return Err("S3 object format error.")
@@ -468,7 +470,16 @@ impl<'a> Handler<'a>  {
 
         match self.auth_type {
             AuthType::AWS4 => {
-                match write(fout, try!(self.aws_v4_request("GET", None, &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()))){
+                match  self.url_style {
+                    UrlStyle::PATH => {
+                        uri = format!("/{}{}", &caps["bucket"], &caps["object"]);
+                    },
+                    UrlStyle::HOST=> {
+                        virtural_host = Some(format!("{}", &caps["bucket"]));
+                        uri = format!("{}", &caps["object"]);
+                    }
+                }
+                match write(fout, try!(self.aws_v4_request("GET", virtural_host, &uri, &Vec::new(), Vec::new()))){
                     Ok(_) => return Ok(()),
                     Err(_) => return Err("write file error") //XXX
                 }
@@ -485,6 +496,8 @@ impl<'a> Handler<'a>  {
     pub fn cat(&self, src:&str) -> Result<(), &'static str> {
         if src == "" {return Err("please specific the object")}
         let re = Regex::new(S3_FORMAT).unwrap();
+        let mut virtural_host = None;
+        let uri:String;
         let caps = match re.captures(src) {
             Some(c) => c,
             None => return Err("S3 object format error.")
@@ -496,7 +509,16 @@ impl<'a> Handler<'a>  {
 
         match self.auth_type {
             AuthType::AWS4 => {
-                match self.aws_v4_request("GET", None, &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()){
+                match  self.url_style {
+                    UrlStyle::PATH => {
+                        uri = format!("/{}{}", &caps["bucket"], &caps["object"]);
+                    },
+                    UrlStyle::HOST=> {
+                        virtural_host = Some(format!("{}", &caps["bucket"]));
+                        uri = format!("{}", &caps["object"]);
+                    }
+                }
+                match self.aws_v4_request("GET", virtural_host, &uri, &Vec::new(), Vec::new()){
                     Ok(b) => { println!("{}", std::str::from_utf8(&b).unwrap_or("")); return Ok(()) },
                     Err(e) => return Err(e) 
                 }
@@ -513,6 +535,8 @@ impl<'a> Handler<'a>  {
     pub fn del(&self, src:&str) -> Result<(), &'static str> {
         if src == "" {return Err("please specific the object")}
         let re = Regex::new(S3_FORMAT).unwrap();
+        let mut virtural_host = None;
+        let uri:String;
         let caps = match re.captures(src) {
             Some(c) => c,
             None => return Err("S3 object format error.")
@@ -521,9 +545,18 @@ impl<'a> Handler<'a>  {
         if &caps["object"] == ""{
             return Err("Please specific the object")
         }
+        match  self.url_style {
+            UrlStyle::PATH => {
+                uri = format!("/{}{}", &caps["bucket"], &caps["object"]);
+            },
+            UrlStyle::HOST=> {
+                virtural_host = Some(format!("{}", &caps["bucket"]));
+                uri = format!("{}", &caps["object"]);
+            }
+        }
 
         match self.auth_type {
-            AuthType::AWS4 => {try!(self.aws_v4_request("DELETE", None, &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), Vec::new()));},
+            AuthType::AWS4 => {try!(self.aws_v4_request("DELETE", virtural_host, &uri, &Vec::new(), Vec::new()));},
             AuthType::AWS2 => {try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()));}
         }
         Ok(())
