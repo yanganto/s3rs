@@ -118,7 +118,8 @@ struct CredentialConfig {
     user: Option<String>,
     access_key: String,
     secrete_key: String,
-    region: Option<String>
+    region: Option<String>,
+    s3_type: Option<String>
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,7 +132,12 @@ impl <'a> Config {
         let credential = &self.credential.clone().unwrap();
         for cre in credential.into_iter(){
             let c = cre.clone();
-            let mut option = String::from(format!("{} ({}) {} ({})", c.host, c.region.unwrap_or(String::from("us-east-1")), c.user.unwrap_or(String::from("user")), c.access_key));
+            let mut option = String::from(format!("[{}] {} ({}) {} ({})", 
+                                                  c.s3_type.unwrap_or(String::from("aws")), 
+                                                  c.host, 
+                                                  c.region.unwrap_or(String::from("us-east-1")), 
+                                                  c.user.unwrap_or(String::from("user")), 
+                                                  c.access_key));
             display_list.push(option);
         }
         display_list
@@ -139,13 +145,16 @@ impl <'a> Config {
 }
 
 
-fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T) -> io::Result<T> where T: FromStr + Ord {
+fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T) 
+    -> io::Result<T> where T: FromStr + Ord {
+
     try!(tty.write_all(prompt.as_bytes()));
     let mut reader = BufReader::new(tty);
     let mut result = String::new();
     try!(reader.read_line(&mut result));
     match result.replace("\n", "").parse::<T>() {
-        Ok(x) => if x >= min && x <= max { Ok(x) } else { read_parse(reader.into_inner(), prompt, min, max) },
+        Ok(x) => if x >= min && x <= max { Ok(x) } 
+                 else { read_parse(reader.into_inner(), prompt, min, max) },
         _ => read_parse(reader.into_inner(), prompt, min, max)
     }
 }
@@ -175,7 +184,7 @@ fn main() {
     } else {
         f = File::create(s3rscfg).expect("Can not write s3rs config file");
         let _ = f.write_all(
-            b"[[credential]]\nhost = \"s3.us-east-3.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
+            b"[[credential]]\ns3_type = \"aws\"\nhost = \"s3.us-east-1.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
             );
         println!("Config file .s3rs is created in your home folder (~/.s3rs), please edit it and add your credentials");
         return 
@@ -207,6 +216,12 @@ fn main() {
         url_style: handler::UrlStyle::PATH, // default use PATH
         region: credential.region.clone()
     };
+    match &credential.s3_type {
+        Some(t) => {
+            handler.change_s3_type(t.as_str());
+        },
+        None => {}
+    }
 
     println!("enter command, help for usage or exit for quit");
 

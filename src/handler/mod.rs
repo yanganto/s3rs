@@ -612,6 +612,7 @@ impl<'a> Handler<'a>  {
     }
 
     pub fn change_s3_type(&mut self, command: &str){
+        println!("set up s3 type as {}", command);
         if command.ends_with("aws"){
             self.auth_type = AuthType::AWS4;
             self.format = Format::XML;
