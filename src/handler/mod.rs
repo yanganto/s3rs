@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::path::Path;
 
 use chrono::prelude::*;
-use reqwest::{Response, header, Client, StatusCode};
+use reqwest::{Response, header, Client};
 use serde_json;
 use regex::Regex;
 use quick_xml::Reader;
@@ -44,21 +44,16 @@ pub struct Handler<'a>{
     pub region: Option<String>
 }
 
-
-pub trait S3 {
-    fn la(&self) -> Response;
-}
-
 fn print_response(res: &mut Response) -> Vec<u8>{
     let mut body = Vec::new();
     let _ =res.read_to_end(&mut body);
-    if res.status() == StatusCode::Ok || res.status() == StatusCode::NoContent {
+    if res.status().is_success() {
         info!("Status: {}", res.status());
-        info!("Headers:\n{}", res.headers());
+        info!("Headers:\n{:?}", res.headers());
         info!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     } else {
         println!("Status: {}", res.status());
-        println!("Headers:\n{}", res.headers());
+        println!("Headers:\n{:?}", res.headers());
         println!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     }
     body 
@@ -68,10 +63,9 @@ impl<'a> Handler<'a>  {
     fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &Vec<u8>) -> Result<Vec<u8>, &'static str>{
 
         let utc: DateTime<Utc> = Utc::now();   
-        header! { (Date, "date") => [String] }
-        let mut headers = header::Headers::new();
+        let mut headers = header::HeaderMap::new();
         let time_str = utc.to_rfc2822();
-        headers.set(Date(time_str.clone()));
+        headers.insert("date", time_str.clone().parse().unwrap());
 
         // NOTE: ceph has bug using x-amz-date
         let mut signed_headers = vec![
@@ -99,14 +93,14 @@ impl<'a> Handler<'a>  {
         authorize_string.push_str(self.access_key);
         authorize_string.push(':');
         authorize_string.push_str(&signature);
-        headers.set(header::Authorization(authorize_string));
+        headers.insert(header::AUTHORIZATION, authorize_string.parse().unwrap());
 
         // get a client builder
         let client = Client::builder()
             .default_headers(headers)
             .build().unwrap();
 
-        let mut action;
+        let action;
         match method {
             "GET" => {action = client.get(query.as_str());},
             "PUT" => {action = client.put(query.as_str());},
@@ -116,7 +110,7 @@ impl<'a> Handler<'a>  {
                 action = client.get(query.as_str());
             }
         }
-        match action.send(){
+        match action.body((*payload).clone()).send(){ // XXX fix payload as Vec<u8>
             Ok(mut res) => Ok(print_response(&mut res)),
             Err(_) => Err("Reqwest Error") //XXX
         }
@@ -124,14 +118,12 @@ impl<'a> Handler<'a>  {
     fn aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Result<Vec<u8>, &'static str>{
 
         let utc: DateTime<Utc> = Utc::now();   
-        header! { (XAMZDate, "x-amz-date") => [String] }
-        let mut headers = header::Headers::new();
+        let mut headers = header::HeaderMap::new();
         let time_str = utc.format("%Y%m%dT%H%M%SZ").to_string();
-        headers.set(XAMZDate(time_str.clone()));
+        headers.insert("x-amz-date", time_str.clone().parse().unwrap());
 
-        header! { (XAMZContentSHA256, "x-amz-content-sha256") => [String] }
         let payload_hash = aws::hash_payload(&payload);
-        headers.set(XAMZContentSHA256(payload_hash));
+        headers.insert( "x-amz-content-sha256", payload_hash.parse().unwrap());
 
         let hostname = match virtural_host {
             Some(vs) => {
@@ -182,24 +174,24 @@ impl<'a> Handler<'a>  {
                                            utc.format("%Y%m%d").to_string(),
                                            self.region.clone().unwrap_or(String::from("us-east-1")),
                                            aws::signed_headers(&mut signed_headers), signature));
-        headers.set(header::Authorization(authorize_string));
+        headers.insert(header::AUTHORIZATION, authorize_string.parse().unwrap());
 
         // get a client builder
         let client = Client::builder()
             .default_headers(headers)
             .build().unwrap();
 
-        let mut action;
+        let action;
         match method {
             "GET" => {action = client.get(query.as_str());},
-            "PUT" => {action = client.put(query.as_str()); action.body(payload);},
+            "PUT" => {action = client.put(query.as_str());},
             "DELETE" => {action = client.delete(query.as_str());},
             _ => {
                 error!("unspport HTTP verb");
                 action = client.get(query.as_str());
             }
         }
-        match action.send(){
+        match action.body(payload).send(){
             Ok(mut res) => Ok(print_response(&mut res)),
             Err(_) => Err("Reqwest Error") //XXX
         }

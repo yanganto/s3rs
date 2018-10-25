@@ -4,7 +4,6 @@ extern crate serde_derive;
 extern crate interactor; 
 extern crate reqwest;
 
-#[macro_use] 
 extern crate hyper;
 extern crate chrono;
 extern crate hmac;
