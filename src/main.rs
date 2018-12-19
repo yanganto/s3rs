@@ -19,6 +19,8 @@ extern crate hmacsha1;
 extern crate serde_json;
 extern crate regex;
 extern crate quick_xml;
+extern crate colored;
+
 
 
 mod handler;
@@ -30,70 +32,9 @@ use std::str;
 use std::str::FromStr;
 use std::io::stdout;
 use log::{Record, Level, Metadata, LevelFilter};
+use colored::*;
 
 static MY_LOGGER: MyLogger = MyLogger;
-
-static USAGE:&str = r#"
-usage:
-    la 
-        list all objects
-
-    ls 
-        list all buckets
-
-    ls <bucket>
-        list all objects of the bucket
-
-    mb <bucket name>
-        create bucket
-
-    rm <bucket name>
-        delete bucket
-    
-    put <file> s3://<bucket>/<object>
-        upload the file with specify object name
-
-    put <file> s3://<bucket>
-        upload the file as the same file name
-
-    put test s3://<bucket>/<object>
-        upload a test file with specify object name
-
-    get  s3://<bucket>/<object> <file> 
-        download the object
-
-    get  s3://<bucket>/<object> 
-        download the object to current folder
-
-    cat s3://<bucket>/<object> 
-        display the object content
-
-    del s3://<bucket>/<object> 
-        delete the object
-
-    /<uri>?<query string>
-        get uri command
-
-    help 
-        show this usage
-
-    log <trace/debug/info/error>
-        change the log level
-        trace for request auth detail
-        debug for request header, status code, raw body
-
-    s3_type <aws/ceph>
-        change the auth type and format for different S3 service
-
-    auth_type <aws2/aws4>
-        change the auth type 
-
-    format <xml/json>
-        change the request format
-
-    exit
-        quit the programe
-"#;
 
 struct MyLogger;
 
@@ -169,9 +110,8 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
 }
 		
 fn main() {
-
-	log::set_logger(&MY_LOGGER).unwrap();
-	log::set_max_level(LevelFilter::Error);
+    log::set_logger(&MY_LOGGER).unwrap();
+    log::set_max_level(LevelFilter::Error);
 
 
     let mut s3rscfg = std::env::home_dir().unwrap();
@@ -303,7 +243,77 @@ fn main() {
         } else if command.starts_with("exit"){
             println!("Thanks for using, cya~");
         } else if command.starts_with("help"){
-            println!("{}", USAGE);
+            println!(r#"
+USAGE:
+
+    {0}
+        list all objects
+    
+    {1}
+        list all buckets
+
+    {1} {2}
+        list all objects of the bucket
+
+    {3} {2}
+        create bucket
+
+    {4} {2}
+        delete bucket
+
+    {5} {6} s3://{2}/{7}
+        upload the file with specify object name
+
+    {5} {6} s3://{2}
+        upload the file as the same file name
+        
+    {5} test s3://{2}/{7}
+        upload a small test text file with specify object name
+
+    {8} s3://{2}/{7} {6}
+        download the object
+
+    {8} s3://{2}/{7} 
+        download the object to current folder
+
+    {9} s3://{2}/{7} 
+        display the object content
+
+    {10} s3://{2}/{7} 
+        delete the object
+
+    /{11}?{12}
+        get uri command
+
+    {13}
+        show this usage
+
+    {14} {15}/{16}/{17}/{18}
+        change the log level
+        {15} for request auth detail
+        {16} for request header, status code, raw body
+        {17} for request http response
+        {18} is default
+
+    {19} {20}/{21}
+        change the auth type and format for different S3 service
+
+    {22} {23}/{24}
+        change the auth type 
+
+    {25} {26}/{27}
+        change the request format
+
+    {28}
+        quit the programe
+
+        "#, 
+            "la".bold(), "ls".bold(), "<bucket>".cyan(), "mb".bold(), "rm".bold(),
+            "put".bold(), "<file>".cyan(), "<object>".cyan(), "get".bold(), "cat".bold(),
+            "del".bold(), "<uri>".cyan(), "<query string>".cyan(), "help".bold(), "log".bold(),
+            "trace".blue(), "debug".blue(), "info".blue(), "error".blue(), "s3_type".bold(),
+            "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
+            "format".bold(), "xml".blue(), "json".blue(), "exit".bold());
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
         }
