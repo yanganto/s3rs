@@ -194,8 +194,8 @@ fn main() {
 
     while command != "exit" && command != "quit" {
         let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty").unwrap();
-        tty.flush().expect("Could not tty");
-        let _ = tty.write_all("s3rs> ".as_bytes());
+        tty.flush().expect("Could not open tty");
+        tty.write_all(format!("{} ", "s3rs>".green()).as_bytes());
         let reader = BufReader::new(&tty);
         let mut command_iter = reader.lines().map(|l| l.unwrap());
         command = command_iter.next().unwrap();
