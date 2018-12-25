@@ -576,6 +576,44 @@ impl<'a> Handler<'a>  {
         Ok(())
     }
 
+    pub fn tag(&self, target: &str, tags: &Vec<(&str, &str)>) -> Result<(), &'static str>  {
+        debug!("target: {:?}", target);
+        debug!("tags: {:?}", tags);
+        if target == "" {return Err("please specific the object")}
+        let re = Regex::new(S3_FORMAT).unwrap();
+        let mut virtural_host = None;
+        let uri:String;
+        let caps = match re.captures(target) {
+            Some(c) => c,
+            None => return Err("S3 object format error.")
+        };
+
+        if &caps["object"] == ""{
+            return Err("Please specific the object")
+        }
+        match  self.url_style {
+            UrlStyle::PATH => {
+                uri = format!("/{}{}?tagging", &caps["bucket"], &caps["object"]);
+            },
+            UrlStyle::HOST=> {
+                virtural_host = Some(format!("{}", &caps["bucket"]));
+                uri = format!("{}?tagging", &caps["object"]);
+            }
+        }
+        let mut content = format!("<Tagging><TagSet>");
+        for tag in tags {
+            content.push_str(&format!("<Key>{}</Key><Value>{}</Value>", tag.0, tag.1));
+        };
+        content.push_str(&format!("<Tagging><TagSet>"));
+        debug!("payload: {:?}", content);
+
+        match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("PUT", virtural_host, &uri, &Vec::new(), content.into_bytes()));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &content.into_bytes()));}
+        }
+        Ok(())
+    }
+
     pub fn url_command(&self, url: &str) -> Result<(), &'static str>  {
         let mut uri = String::new();
         let mut raw_qs = String::new();
@@ -586,7 +624,8 @@ impl<'a> Handler<'a>  {
                 raw_qs.push_str(&String::from_str(&url[idx+1..]).unwrap());
                 for q_pair in raw_qs.split('&'){
                     match q_pair.find('='){
-                        Some(i)=>{query_strings.push(q_pair.split_at(i))},
+                        Some(_)=>{query_strings.push((q_pair.split('=').nth(0).unwrap(),
+                                                     q_pair.split('=').nth(1).unwrap()))},
                         None => {query_strings.push((&q_pair, ""))}
                     }
                 }

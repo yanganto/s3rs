@@ -221,6 +221,28 @@ fn main() {
                 Err(e) => println!("{}", e),
                 Ok(_) => println!("deletion completed")
             }
+        } else if command.starts_with("tag"){
+            let mut iter = command.split_whitespace();
+            let target = iter.nth(1).unwrap_or("");
+            let mut tags = Vec::new();
+            loop {
+                match iter.next() {
+                    Some(kv_pair) => {
+                        match kv_pair.find('=') {
+                            Some(_) => {
+                                tags.push(
+                                    (kv_pair.split('=').nth(0).unwrap(),
+                                     kv_pair.split('=').nth(1).unwrap()))},
+                            None =>  {tags.push((&kv_pair, ""))}
+                        }
+                    }
+                    None =>{break;}
+                };
+            }
+            match handler.tag(target, &tags){
+                Err(e) => println!("{}", e),
+                Ok(_) => println!("tag completed")
+            }
         } else if command.starts_with("mb"){
             print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap_or("")));
         } else if command.starts_with("rb"){
@@ -282,6 +304,10 @@ USAGE:
     {10} s3://{2}/{7} 
         delete the object
 
+    {29} s3://{2}/{7}  {30}={31} ...
+        tag the obje
+
+
     /{11}?{12}
         get uri command
 
@@ -313,7 +339,8 @@ USAGE:
             "del".bold(), "<uri>".cyan(), "<query string>".cyan(), "help".bold(), "log".bold(),
             "trace".blue(), "debug".blue(), "info".blue(), "error".blue(), "s3_type".bold(),
             "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
-            "format".bold(), "xml".blue(), "json".blue(), "exit".bold());
+            "format".bold(), "xml".blue(), "json".blue(), "exit".bold(), "tag".bold(),
+            "<key>".cyan(), "<value>".cyan());
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
         }
