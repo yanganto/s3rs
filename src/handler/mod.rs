@@ -600,11 +600,11 @@ impl<'a> Handler<'a>  {
                 uri = format!("{}", &caps["object"]);
             }
         }
-        let mut content = format!("<Tagging><TagSet><Tag>");
+        let mut content = format!("<Tagging><TagSet>");
         for tag in tags {
-            content.push_str(&format!("<Key>{}</Key><Value>{}</Value>", tag.0, tag.1));
+            content.push_str(&format!("<Tag><Key>{}</Key><Value>{}</Value></Tag>", tag.0, tag.1));
         };
-        content.push_str(&format!("</Tag></TagSet></Tagging>"));
+        content.push_str(&format!("</TagSet></Tagging>"));
         debug!("payload: {:?}", content);
 
         let query_string = vec![("tagging", "")];
@@ -636,10 +636,11 @@ impl<'a> Handler<'a>  {
             }
         }
 
-        match self.auth_type {
-            AuthType::AWS4 => {try!(self.aws_v4_request("GET", None, &uri, &query_strings, Vec::new()));},
-            AuthType::AWS2 => {try!(self.aws_v2_request("GET", &uri, &query_strings, &Vec::new()));}
+        let result = match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("GET", None, &uri, &query_strings, Vec::new()))},
+            AuthType::AWS2 => {try!(self.aws_v2_request("GET", &uri, &query_strings, &Vec::new()))}
         };
+        println!("{}", std::str::from_utf8(&result).unwrap_or(""));
         Ok(())
     }
 
