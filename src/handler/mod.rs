@@ -52,9 +52,9 @@ fn print_response(res: &mut Response) -> Vec<u8>{
         info!("Headers:\n{:?}", res.headers());
         info!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     } else {
-        println!("Status: {}", res.status());
-        println!("Headers:\n{:?}", res.headers());
-        println!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
+        error!("Status: {}", res.status());
+        error!("Headers:\n{:?}", res.headers());
+        error!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     }
     body 
 }
@@ -593,23 +593,24 @@ impl<'a> Handler<'a>  {
         }
         match  self.url_style {
             UrlStyle::PATH => {
-                uri = format!("/{}{}?tagging", &caps["bucket"], &caps["object"]);
+                uri = format!("/{}{}", &caps["bucket"], &caps["object"]);
             },
             UrlStyle::HOST=> {
                 virtural_host = Some(format!("{}", &caps["bucket"]));
-                uri = format!("{}?tagging", &caps["object"]);
+                uri = format!("{}", &caps["object"]);
             }
         }
-        let mut content = format!("<Tagging><TagSet>");
+        let mut content = format!("<Tagging><TagSet><Tag>");
         for tag in tags {
             content.push_str(&format!("<Key>{}</Key><Value>{}</Value>", tag.0, tag.1));
         };
-        content.push_str(&format!("<Tagging><TagSet>"));
+        content.push_str(&format!("</Tag></TagSet></Tagging>"));
         debug!("payload: {:?}", content);
 
+        let query_string = vec![("tagging", "")];
         match self.auth_type {
-            AuthType::AWS4 => {try!(self.aws_v4_request("PUT", virtural_host, &uri, &Vec::new(), content.into_bytes()));},
-            AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &content.into_bytes()));}
+            AuthType::AWS4 => {try!(self.aws_v4_request("PUT", virtural_host, &uri, &query_string, content.into_bytes()));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &format!("/{}{}", &caps["bucket"], &caps["object"]), &query_string, &content.into_bytes()));}
         }
         Ok(())
     }

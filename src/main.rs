@@ -45,7 +45,14 @@ impl log::Log for MyLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            println!("{} - {}", record.level(), record.args());
+            match record.level() {
+                log::Level::Error => println!("{} - {}", "ERROR".red().bold(), record.args()),
+                log::Level::Warn => println!("{} - {}", "WARN".red(), record.args()),
+                log::Level::Info => println!("{} - {}", "INFO".cyan(), record.args()),
+                log::Level::Debug => println!("{} - {}", "DEBUG".blue().bold(), record.args()),
+                log::Level::Trace => println!("{} - {}", "TRACE".blue(), record.args())
+            }
+            
         }
     }
     fn flush(&self) {}
@@ -314,8 +321,9 @@ USAGE:
     {13}
         show this usage
 
-    {14} {15}/{16}/{17}/{18}
+    {14} {32}/{15}/{16}/{17}/{18}
         change the log level
+        {32} for every thing
         {15} for request auth detail
         {16} for request header, status code, raw body
         {17} for request http response
@@ -340,7 +348,7 @@ USAGE:
             "trace".blue(), "debug".blue(), "info".blue(), "error".blue(), "s3_type".bold(),
             "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
             "format".bold(), "xml".blue(), "json".blue(), "exit".bold(), "tag".bold(),
-            "<key>".cyan(), "<value>".cyan());
+            "<key>".cyan(), "<value>".cyan(), "trace".blue());
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
         }

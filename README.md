@@ -5,6 +5,7 @@ s3rs
 a **S3** **R**ich **S**upport client
 - multi config
 - interactive command line tool
+- easy to debug with http protocol
 - AWS4, AWS2 support
 
 current status:  
@@ -57,3 +58,6 @@ Clone the code
 
 # Demo
 - A short demo [video](https://youtu.be/DnWQbDmBFpg)
+- snapshot
+![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example.png)
+
