@@ -1,6 +1,7 @@
 s3rs 
 ---
-[![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)
+[![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
+
 a **S3** **R**ich **S**upport client
 - multi config
 - interactive command line tool
@@ -17,17 +18,17 @@ current status:
 | ls s3://[bucket]                                         | list objects in the bucket                  | O    | O   |
 | mb [bucket]                                              | create bucket                               | O    | O   |
 | rb [bucket]                                              | delete bucket                               | O    | O   |
-| put [file] s3://[bucket]/[object]                        | upload the file sepcific object name        | O    | O   |
+| put [file] s3://[bucket]/[object]                        | upload the file sepcific object name        | O    | 0   |
 | put [file] s3://[bucket]                                 | upload the file use file name as objec name | O    | O   |
 | put test s3://[bucket]/[object]                          | upload a test file sepcific object name     | O    | O   |
 | get s3://[bucket]/[object] file                          | download objec                              | O    | O   |
 | get s3://[bucket]/[object]                               | download objec in current folder            | O    | O   |
 | cat s3://[bucket]/[object]                               | show the object content                     | O    | O   |
 | del s3://[bucket]/[object]                               | delete the object                           | O    | O   |
-| tag add s3://[bucket]/[object] key1=value1 [key2=value2] | tag the object                              | O    | O   |
-| tag put s3://[bucket]/[object] key1=value1 [key2=value2] | tag the object                              | O    | O   |
-| tag del s3://[bucket]/[object] key1=value1 [key2=value2] | tag the object                              | O    | O   |
-| tag rm  s3://[bucket]/[object] key1=value1 [key2=value2] | tag the object                              | O    | O   |
+| tag add s3://[bucket]/[object] key1=value1 [key2=value2] | add tag(s) to the object                    | O    | O   |
+| tag put s3://[bucket]/[object] key1=value1 [key2=value2] | add tag(s) to the object                    | O    | O   |
+| tag del s3://[bucket]/[object]                           | remove tag(s) from the object               | O    | O   |
+| tag rm s3://[bucket]/[object]                            | remove tag(s) from the object               | O    | O   |
 | /uri?query                                               | give the orignal url                        | O    | O   |
 |----------------------------------------------------------|---------------------------------------------|------|-----|
 | s3\_type [ceph/aws/aws4/aws2]                            | change the api for different S3 providor    |      |     |
