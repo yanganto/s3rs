@@ -230,7 +230,8 @@ fn main() {
             }
         } else if command.starts_with("tag"){
             let mut iter = command.split_whitespace();
-            let target = iter.nth(1).unwrap_or("");
+            let action = iter.nth(1).unwrap_or("");
+            let target = iter.nth(0).unwrap_or("");
             let mut tags = Vec::new();
             loop {
                 match iter.next() {
@@ -246,9 +247,16 @@ fn main() {
                     None =>{break;}
                 };
             }
-            match handler.tag(target, &tags){
-                Err(e) => println!("{}", e),
-                Ok(_) => println!("tag completed")
+            match action {
+                "add"|"put" => match handler.add_tag(target, &tags){
+                    Err(e) => println!("{}", e),
+                    Ok(_) => println!("tag completed")
+                },
+                "del"|"rm" => match handler.del_tag(target){
+                    Err(e) => println!("{}", e),
+                    Ok(_) => println!("tag removed")
+                },
+                _ => println!("only support these tag actions: add, put, del, rm")
             }
         } else if command.starts_with("mb"){
             print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap_or("")));
@@ -311,9 +319,11 @@ USAGE:
     {10} s3://{2}/{7} 
         delete the object
 
-    {29} s3://{2}/{7}  {30}={31} ...
-        tag the obje
+    {29} {33}/{5} s3://{2}/{7}  {30}={31} ...
+        add tags to the object
 
+    {29} {10}/{4} s3://{2}/{7}
+        remove tags from the object
 
     /{11}?{12}
         get uri command
@@ -348,7 +358,7 @@ USAGE:
             "trace".blue(), "debug".blue(), "info".blue(), "error".blue(), "s3_type".bold(),
             "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
             "format".bold(), "xml".blue(), "json".blue(), "exit".bold(), "tag".bold(),
-            "<key>".cyan(), "<value>".cyan(), "trace".blue());
+            "<key>".cyan(), "<value>".cyan(), "trace".blue(), "add".bold()); //34
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
         }

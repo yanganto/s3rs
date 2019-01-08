@@ -576,7 +576,7 @@ impl<'a> Handler<'a>  {
         Ok(())
     }
 
-    pub fn tag(&self, target: &str, tags: &Vec<(&str, &str)>) -> Result<(), &'static str>  {
+    pub fn add_tag(&self, target: &str, tags: &Vec<(&str, &str)>) -> Result<(), &'static str>  {
         debug!("target: {:?}", target);
         debug!("tags: {:?}", tags);
         if target == "" {return Err("please specific the object")}
@@ -611,6 +611,39 @@ impl<'a> Handler<'a>  {
         match self.auth_type {
             AuthType::AWS4 => {try!(self.aws_v4_request("PUT", virtural_host, &uri, &query_string, content.into_bytes()));},
             AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &format!("/{}{}", &caps["bucket"], &caps["object"]), &query_string, &content.into_bytes()));}
+        }
+        Ok(())
+    }
+
+    pub fn del_tag(&self, target: &str) -> Result<(), &'static str>  {
+        debug!("target: {:?}", target);
+        if target == "" {return Err("please specific the object")}
+        let re = Regex::new(S3_FORMAT).unwrap();
+        let mut virtural_host = None;
+        let uri:String;
+        let caps = match re.captures(target) {
+            Some(c) => c,
+            None => return Err("S3 object format error.")
+        };
+
+        if &caps["object"] == ""{
+            return Err("Please specific the object")
+        }
+
+        match  self.url_style {
+            UrlStyle::PATH => {
+                uri = format!("/{}{}", &caps["bucket"], &caps["object"]);
+            },
+            UrlStyle::HOST=> {
+                virtural_host = Some(format!("{}", &caps["bucket"]));
+                uri = format!("{}", &caps["object"]);
+            }
+        }
+
+        let query_string = vec![("tagging", "")];
+        match self.auth_type {
+            AuthType::AWS4 => {try!(self.aws_v4_request("DELETE", virtural_host, &uri, &query_string, Vec::new()));},
+            AuthType::AWS2 => {try!(self.aws_v2_request("DELETE", &format!("/{}{}", &caps["bucket"], &caps["object"]), &query_string, &Vec::new()));}
         }
         Ok(())
     }
