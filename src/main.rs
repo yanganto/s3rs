@@ -323,7 +323,7 @@ USAGE:
         add tags to the object
 
     {29} {10}/{4} s3://{2}/{7}
-        remove tags to the object
+        remove tags from the object
 
     /{11}?{12}
         get uri command
