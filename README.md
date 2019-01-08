@@ -1,5 +1,6 @@
 s3rs 
 ---
+[![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)
 a **S3** **R**ich **S**upport client
 - multi config
 - interactive command line tool

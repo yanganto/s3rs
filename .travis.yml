@@ -8,6 +8,10 @@ matrix:
     - rust: nightly
   fast_finish: true
 cache: cargo
-script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
+
+jobs:
+  include:
+    - stage: "Test"
+      script: cargo test --verbose --all
+    - stage: "Build"
+      script: cargo build --verbose --all
