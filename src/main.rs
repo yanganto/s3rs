@@ -200,12 +200,16 @@ fn main() {
     }
 
     while command != "exit" && command != "quit" {
-        let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty").unwrap();
-        tty.flush().expect("Could not open tty");
-        tty.write_all(format!("{} ", "s3rs>".green()).as_bytes());
-        let reader = BufReader::new(&tty);
-        let mut command_iter = reader.lines().map(|l| l.unwrap());
-        command = command_iter.next().unwrap();
+        command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
+            Ok(mut tty) => {
+                tty.flush().expect("Could not open tty");
+                tty.write_all(format!("{} ", "s3rs>".green()).as_bytes());
+                let reader = BufReader::new(&tty);
+                let mut command_iter = reader.lines().map(|l| l.unwrap());
+                command_iter.next().unwrap_or("quit".to_string())
+            },
+            Err(e) => {println!("{:?}", e);  "quit".to_string()}
+        };
 
         debug!("===== do command: {} =====", command);
         if command.starts_with("la"){
@@ -277,7 +281,7 @@ fn main() {
             handler.change_url_style(&command);
         } else if command.starts_with("log"){ 
             change_log_type(&command);
-        } else if command.starts_with("exit"){
+        } else if command.starts_with("exit") || command.starts_with("quit") {
             println!("Thanks for using, cya~");
         } else if command.starts_with("help"){
             println!(r#"
