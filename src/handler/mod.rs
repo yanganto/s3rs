@@ -10,6 +10,7 @@ use serde_json;
 use regex::Regex;
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use ::CredentialConfig;
 
 
 
@@ -728,6 +729,46 @@ impl<'a> Handler<'a>  {
         }else{
             println!("usage: url_style [path/host]");
         }
-
+    }
+    
+    pub fn init_from_config(credential: &'a CredentialConfig) -> Self {
+        debug!("host: {}", credential.host);
+        debug!("access key: {}", credential.access_key);
+        debug!("secrete key: {}", credential.secrete_key);
+        match credential.clone().s3_type.unwrap_or("".to_string()).as_str() {
+            "aws" => {
+                Handler {
+                    host: &credential.host,
+                    access_key: &credential.access_key,
+                    secrete_key: &credential.secrete_key,
+                    auth_type: AuthType::AWS4, 
+                    format: Format::XML,
+                    url_style: UrlStyle::HOST, 
+                    region: credential.region.clone()
+                }
+            },
+            "ceph" => {
+                Handler {
+                    host: &credential.host,
+                    access_key: &credential.access_key,
+                    secrete_key: &credential.secrete_key,
+                    auth_type: AuthType::AWS4,
+                    format: Format::JSON, 
+                    url_style: UrlStyle::PATH,
+                    region: credential.region.clone()
+                }
+            }, 
+            _ => {
+                Handler {
+                    host: &credential.host,
+                    access_key: &credential.access_key,
+                    secrete_key: &credential.secrete_key,
+                    auth_type: AuthType::AWS4, 
+                    format: Format::XML, 
+                    url_style: UrlStyle::PATH, 
+                    region: credential.region.clone()
+                }
+            }
+        }
     }
 }
