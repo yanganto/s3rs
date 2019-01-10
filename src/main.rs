@@ -178,7 +178,7 @@ fn main() {
             Ok(mut tty) => {
                 tty.flush().expect("Could not open tty");
                 tty.write_all(
-                    format!("{} {} {}", "s3rs".green(), login_user.cyan(), ">".green()).as_bytes());
+                    format!("{} {} {} ", "s3rs".green(), login_user.cyan(), ">".green()).as_bytes());
                 let reader = BufReader::new(&tty);
                 let mut command_iter = reader.lines().map(|l| l.unwrap());
                 command_iter.next().unwrap_or("logout".to_string())
@@ -255,7 +255,7 @@ fn main() {
         } else if command.starts_with("url_style"){
             handler.change_url_style(&command);
         } else if command.starts_with("logout"){ 
-            println!("logout");
+            println!("");
             chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
             handler = handler::Handler::init_from_config(&config_list[chosen_int]);
             login_user = config_list[chosen_int].user.clone().unwrap_or(" ".to_string());
