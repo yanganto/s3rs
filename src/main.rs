@@ -58,9 +58,8 @@ impl log::Log for MyLogger {
     fn flush(&self) {}
 }
 
-
 #[derive(Debug, Clone, Deserialize)]
-struct CredentialConfig {
+pub struct CredentialConfig {
     host: String,
     user: Option<String>,
     access_key: String,
@@ -91,12 +90,11 @@ impl <'a> Config {
     }
 }
 
-
 fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T) 
     -> io::Result<T> where T: FromStr + Ord {
 
     try!(tty.write_all(prompt.as_bytes()));
-    let mut reader = BufReader::new(tty);
+    let mut reader = io::BufReader::new(tty);
     let mut result = String::new();
     try!(reader.read_line(&mut result));
     match result.replace("\n", "").parse::<T>() {
@@ -115,11 +113,10 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
     let idx = try!(read_parse::<usize>(&mut tty, prompt, 1, items.len())) - 1;
     Ok(idx)
 }
-		
+
 fn main() {
     log::set_logger(&MY_LOGGER).unwrap();
     log::set_max_level(LevelFilter::Error);
-
 
     let mut s3rscfg = std::env::home_dir().unwrap();
     s3rscfg.push(".s3rs");
@@ -132,42 +129,19 @@ fn main() {
         let _ = f.write_all(
             b"[[credential]]\ns3_type = \"aws\"\nhost = \"s3.us-east-1.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
             );
-        println!("Config file .s3rs is created in your home folder (~/.s3rs), please edit it and add your credentials");
-        return 
+        panic!("Config file .s3rs is created in your home folder (~/.s3rs), please edit it and add your credentials")
     }
 
     let mut config_contents = String::new();
     f.read_to_string(&mut config_contents).expect("s3rs config is not readable");
 
     let config:Config = toml::from_str(config_contents.as_str()).unwrap();
-
-
     let config_option: Vec<String> = config.gen_selecitons();
 
-    let chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
-
-
-    // save the credential user this time 
-    let credential = &config.credential.unwrap()[chosen_int];
-    debug!("host: {}", credential.host);
-    debug!("access key: {}", credential.access_key);
-    debug!("secrete key: {}", credential.secrete_key);
-
-    let mut handler = handler::Handler{
-        host: &credential.host,
-        access_key: &credential.access_key,
-        secrete_key: &credential.secrete_key,
-        auth_type: handler::AuthType::AWS4, // default use AWS4, used in CEPH
-        format: handler::Format::XML, // default use XML, supported both in CEPH ans AWS
-        url_style: handler::UrlStyle::PATH, // default use PATH
-        region: credential.region.clone()
-    };
-    match &credential.s3_type {
-        Some(t) => {
-            handler.change_s3_type(t.as_str());
-        },
-        None => {}
-    }
+    let mut chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
+    let config_list = config.credential.unwrap();
+    let mut handler = handler::Handler::init_from_config(&config_list[chosen_int]);
+    let mut login_user = config_list[chosen_int].user.clone().unwrap_or("unknown".to_string());
 
     println!("enter command, help for usage or exit for quit");
 
@@ -200,12 +174,17 @@ fn main() {
     }
 
     while command != "exit" && command != "quit" {
-        let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty").unwrap();
-        tty.flush().expect("Could not open tty");
-        tty.write_all(format!("{} ", "s3rs>".green()).as_bytes());
-        let reader = BufReader::new(&tty);
-        let mut command_iter = reader.lines().map(|l| l.unwrap());
-        command = command_iter.next().unwrap();
+        command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
+            Ok(mut tty) => {
+                tty.flush().expect("Could not open tty");
+                tty.write_all(
+                    format!("{} {} {} ", "s3rs".green(), login_user.cyan(), ">".green()).as_bytes());
+                let reader = BufReader::new(&tty);
+                let mut command_iter = reader.lines().map(|l| l.unwrap());
+                command_iter.next().unwrap_or("logout".to_string())
+            },
+            Err(e) => {println!("{:?}", e);  "quit".to_string()}
+        };
 
         debug!("===== do command: {} =====", command);
         if command.starts_with("la"){
@@ -275,9 +254,14 @@ fn main() {
             handler.change_format_type(&command);
         } else if command.starts_with("url_style"){
             handler.change_url_style(&command);
+        } else if command.starts_with("logout"){ 
+            println!("");
+            chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
+            handler = handler::Handler::init_from_config(&config_list[chosen_int]);
+            login_user = config_list[chosen_int].user.clone().unwrap_or(" ".to_string());
         } else if command.starts_with("log"){ 
             change_log_type(&command);
-        } else if command.starts_with("exit"){
+        } else if command.starts_with("exit") || command.starts_with("quit") {
             println!("Thanks for using, cya~");
         } else if command.starts_with("help"){
             println!(r#"
@@ -351,6 +335,8 @@ USAGE:
     {28}
         quit the programe
 
+    {34} / {35}
+        logout and reselect account
         "#, 
             "la".bold(), "ls".bold(), "<bucket>".cyan(), "mb".bold(), "rm".bold(),
             "put".bold(), "<file>".cyan(), "<object>".cyan(), "get".bold(), "cat".bold(),
@@ -358,7 +344,9 @@ USAGE:
             "trace".blue(), "debug".blue(), "info".blue(), "error".blue(), "s3_type".bold(),
             "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
             "format".bold(), "xml".blue(), "json".blue(), "exit".bold(), "tag".bold(),
-            "<key>".cyan(), "<value>".cyan(), "trace".blue(), "add".bold()); //34
+            "<key>".cyan(), "<value>".cyan(), "trace".blue(), "add".bold(), "logout".bold(), 
+            "Ctrl + D".bold()//35
+            ); 
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
         }

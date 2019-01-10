@@ -10,6 +10,7 @@ use serde_json;
 use regex::Regex;
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use ::CredentialConfig;
 
 
 
@@ -239,7 +240,7 @@ impl<'a> Handler<'a>  {
             }
         }
         for bucket in buckets{
-            let bucket_prefix = format!("S3://{}", bucket.as_str());
+            let bucket_prefix = format!("s3://{}", bucket.as_str());
             match self.auth_type {
                 AuthType::AWS4 => { 
                     res = std::str::from_utf8(&try!(self.aws_v4_request("GET", None, &format!("/{}", bucket.as_str()), &Vec::new(), Vec::new()))).unwrap_or("").to_string();
@@ -348,7 +349,7 @@ impl<'a> Handler<'a>  {
                                     if e.name() == b"Key" { in_key_tag = false }
                                 },
                                 Ok(Event::Text(e)) => {
-                                    if in_key_tag { println!("S3://{}/{} ", vitural_host.clone().unwrap_or(uri.to_string()),e.unescape_and_decode(&reader).unwrap()) }
+                                    if in_key_tag { println!("s3://{}/{} ", vitural_host.clone().unwrap_or(uri.to_string()),e.unescape_and_decode(&reader).unwrap()) }
                                 },
                                 Ok(Event::Eof) => break, 
                                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
@@ -369,7 +370,7 @@ impl<'a> Handler<'a>  {
                         let result:serde_json::Value = serde_json::from_str(&res).unwrap();
                         for bucket_list in  result[1].as_array(){
                             for bucket in bucket_list{
-                                println!("S3://{} ", bucket["Name"].as_str().unwrap());
+                                println!("s3://{} ", bucket["Name"].as_str().unwrap());
                             }
                         }
                     },
@@ -387,7 +388,7 @@ impl<'a> Handler<'a>  {
                                     if e.name() == b"Name" { in_name_tag = false }
                                 },
                                 Ok(Event::Text(e)) => {
-                                    if in_name_tag { println!("S3://{} ", e.unescape_and_decode(&reader).unwrap()) }
+                                    if in_name_tag { println!("s3://{} ", e.unescape_and_decode(&reader).unwrap()) }
                                 },
                                 Ok(Event::Eof) => break, 
                                 Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
@@ -728,6 +729,46 @@ impl<'a> Handler<'a>  {
         }else{
             println!("usage: url_style [path/host]");
         }
-
+    }
+    
+    pub fn init_from_config(credential: &'a CredentialConfig) -> Self {
+        debug!("host: {}", credential.host);
+        debug!("access key: {}", credential.access_key);
+        debug!("secrete key: {}", credential.secrete_key);
+        match credential.clone().s3_type.unwrap_or("".to_string()).as_str() {
+            "aws" => {
+                Handler {
+                    host: &credential.host,
+                    access_key: &credential.access_key,
+                    secrete_key: &credential.secrete_key,
+                    auth_type: AuthType::AWS4, 
+                    format: Format::XML,
+                    url_style: UrlStyle::HOST, 
+                    region: credential.region.clone()
+                }
+            },
+            "ceph" => {
+                Handler {
+                    host: &credential.host,
+                    access_key: &credential.access_key,
+                    secrete_key: &credential.secrete_key,
+                    auth_type: AuthType::AWS4,
+                    format: Format::JSON, 
+                    url_style: UrlStyle::PATH,
+                    region: credential.region.clone()
+                }
+            }, 
+            _ => {
+                Handler {
+                    host: &credential.host,
+                    access_key: &credential.access_key,
+                    secrete_key: &credential.secrete_key,
+                    auth_type: AuthType::AWS4, 
+                    format: Format::XML, 
+                    url_style: UrlStyle::PATH, 
+                    region: credential.region.clone()
+                }
+            }
+        }
     }
 }

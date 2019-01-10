@@ -10,6 +10,7 @@ a **S3** **R**ich **S**upport client
 
 current status:  
 
+|----------------------------------------------------------|---------------------------------------------|------|-----|
 | function                                                 | descrrption                                 | CEPH | AWS |
 |----------------------------------------------------------|---------------------------------------------|------|-----|
 | la                                                       | list all objects                            | O    | O   |
@@ -36,11 +37,17 @@ current status:
 |                                                          | - trace: more detail about rust             |      |     |
 |                                                          | - debug: for auth signature hash info       |      |     |
 |                                                          | - Info: for Http header and body            |      |     |
+| logout                                                   | logout and reselect user                    |      |     |
+| Ctrl + d                                                 | logout and reselect user                    |      |     |
+|----------------------------------------------------------|---------------------------------------------|------|-----|
 
+
+|---------|-----------|--------|---------------------------------|
 | s3 type | auth type | format | virtual-hosted–style path-style |
 |---------|-----------|--------|---------------------------------|
 | ceph    | aws4      | json   | path-style                      |
 | aws     | aws4      | xml    | virtual-hosted–style            |
+|---------|-----------|--------|---------------------------------|
 
 
 
