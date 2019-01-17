@@ -1,13 +1,13 @@
 [package]
 name = "s3rs"
-version = "0.1.18"
+version = "0.1.19"
 authors = ["Antonio Yang <yanganto@gmail.com>"]
 description = "A s3 cli client with multi configs with diffent provider"
 keywords = ["S3", "Amazon", "ceph", "AWS"]
 categories = ["command-line-interface"]
 license = "MIT"
 readme = "README.md"
-repository = "https://gitlab.com/yanganto/s3rs"
+repository = "https://github.com/yanganto/s3rs"
 
 
 [dependencies]

@@ -119,7 +119,7 @@ fn main() {
     log::set_max_level(LevelFilter::Error);
 
     let mut s3rscfg = std::env::home_dir().unwrap();
-    s3rscfg.push(".s3rs");
+    s3rscfg.push(".s3rs.toml");
 
     let mut f;
     if s3rscfg.exists() {
@@ -129,7 +129,8 @@ fn main() {
         let _ = f.write_all(
             b"[[credential]]\ns3_type = \"aws\"\nhost = \"s3.us-east-1.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
             );
-        panic!("Config file .s3rs is created in your home folder (~/.s3rs), please edit it and add your credentials")
+        print!("Config file {} is created in your home folder, please edit it and add your credentials", ".s3rs.toml".bold());
+        return 
     }
 
     let mut config_contents = String::new();
