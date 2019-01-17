@@ -48,7 +48,7 @@ pub struct Handler<'a>{
 fn print_response(res: &mut Response) -> Vec<u8>{
     let mut body = Vec::new();
     let _ =res.read_to_end(&mut body);
-    if res.status().is_success() {
+    if res.status().is_success() || res.status().is_redirection(){
         info!("Status: {}", res.status());
         info!("Headers:\n{:?}", res.headers());
         info!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
@@ -116,8 +116,9 @@ impl<'a> Handler<'a>  {
             Err(_) => Err("Reqwest Error") //XXX
         }
     }
-    fn aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Result<Vec<u8>, &'static str>{
 
+    // region, endpoint parameters are used for HTTP redirect
+    fn _aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>, region:Option<String>, endpoint:Option<String>) -> Result<Vec<u8>, &'static str> {
         let utc: DateTime<Utc> = Utc::now();   
         let mut headers = header::HeaderMap::new();
         let time_str = utc.format("%Y%m%dT%H%M%SZ").to_string();
@@ -126,15 +127,21 @@ impl<'a> Handler<'a>  {
         let payload_hash = aws::hash_payload(&payload);
         headers.insert( "x-amz-content-sha256", payload_hash.parse().unwrap());
 
-        let hostname = match virtural_host {
-            Some(vs) => {
-                let mut host = vs;
-                host.push_str(".");
-                host.push_str(self.host);
-                host
-            },
-            None => {self.host.to_string()}
+        // follow the endpoint from http redirect first
+        let hostname = match endpoint {
+            Some(ep) => {ep},
+            None => { match virtural_host {
+                    Some(vs) => {
+                        let mut host = vs;
+                        host.push_str(".");
+                        host.push_str(self.host);
+                        host
+                    },
+                    None => {self.host.to_string()}
+                }
+            }
         };
+
 
 
         let mut signed_headers = vec![
@@ -163,17 +170,17 @@ impl<'a> Handler<'a>  {
                                   &mut signed_headers,
                                   &payload,
                                   utc.format("%Y%m%dT%H%M%SZ").to_string(),
-                                  self.region.clone(),
+                                  region.clone(),
                                   false).as_str(),
                               utc.format("%Y%m%d").to_string(),
-                              self.region.clone(),
+                              region.clone(),
                               false);
         let mut authorize_string = String::from_str("AWS4-HMAC-SHA256 Credential=").unwrap();
         authorize_string.push_str(self.access_key);
         authorize_string.push('/');
         authorize_string.push_str(&format!("{}/{}/s3/aws4_request, SignedHeaders={}, Signature={}",
                                            utc.format("%Y%m%d").to_string(),
-                                           self.region.clone().unwrap_or(String::from("us-east-1")),
+                                           region.clone().unwrap_or(String::from("us-east-1")),
                                            aws::signed_headers(&mut signed_headers), signature));
         headers.insert(header::AUTHORIZATION, authorize_string.parse().unwrap());
 
@@ -192,11 +199,55 @@ impl<'a> Handler<'a>  {
                 action = client.get(query.as_str());
             }
         }
-        match action.body(payload).send(){
-            Ok(mut res) => Ok(print_response(&mut res)),
+        match action.body(payload.clone()).send(){
+            Ok(mut res) => {
+                match res.status().is_redirection() {
+                    true  => {
+                        let body = print_response(&mut res);
+                        let result = std::str::from_utf8(&body).unwrap_or("");
+                        let mut endpoint = "".to_string();
+                        match self.format {
+                            Format::JSON => {
+                                // Not implement, AWS response is XML, maybe ceph need this
+                            },
+                            Format::XML => {
+                                let mut reader = Reader::from_str(&result);
+                                let mut in_tag = false;
+                                let mut buf = Vec::new();
+
+                                loop {
+                                    match reader.read_event(&mut buf) {
+                                        Ok(Event::Start(ref e)) => {
+                                            if e.name() == b"Endpoint" { in_tag = true; }
+                                        },
+                                        Ok(Event::End(ref e)) => {
+                                            if e.name() == b"Endpoint" { in_tag = false; }
+                                        },
+                                        Ok(Event::Text(e)) => {
+                                            if in_tag { endpoint = e.unescape_and_decode(&reader).unwrap(); }
+                                        },
+                                        Ok(Event::Eof) => break, 
+                                        Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                                        _ => (), 
+                                    }
+                                    buf.clear();
+                                }
+                            }
+                        }
+                        self._aws_v4_request(method, None, uri, qs, payload, Some(res.headers()["x-amz-bucket-region"].to_str().unwrap_or("").to_string()), Some(endpoint))
+                    }
+                    false => Ok(print_response(&mut res))
+                }
+            },
             Err(_) => Err("Reqwest Error") //XXX
         }
+
     }
+
+    fn aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+        self._aws_v4_request(method, virtural_host, uri, qs, payload, self.region.clone(), None)
+    }
+
     pub fn la(&self) -> Result<(), &'static str> {
         let re = Regex::new(RESPONSE_FORMAT).unwrap();
         let mut res: String;
@@ -243,7 +294,7 @@ impl<'a> Handler<'a>  {
             let bucket_prefix = format!("s3://{}", bucket.as_str());
             match self.auth_type {
                 AuthType::AWS4 => { 
-                    res = std::str::from_utf8(&try!(self.aws_v4_request("GET", None, &format!("/{}", bucket.as_str()), &Vec::new(), Vec::new()))).unwrap_or("").to_string();
+                    res = std::str::from_utf8(&try!(self.aws_v4_request("GET", Some(bucket), "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();
                     match self.format {
                         Format::JSON => {
                             for cap in re.captures_iter(&res) {
