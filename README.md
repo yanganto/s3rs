@@ -7,6 +7,7 @@ a **S3** **R**ich **S**upport client
 - interactive command line tool
 - easy to debug with http protocol
 - AWS4, AWS2 support
+- support http redirect for multi region of AWS S3
 
 current status:  
 
