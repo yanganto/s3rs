@@ -294,7 +294,10 @@ impl<'a> Handler<'a>  {
             let bucket_prefix = format!("s3://{}", bucket.as_str());
             match self.auth_type {
                 AuthType::AWS4 => { 
-                    res = std::str::from_utf8(&try!(self.aws_v4_request("GET", Some(bucket), "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();
+                    res = match self.url_style {
+                        UrlStyle::PATH => { std::str::from_utf8(&try!(self.aws_v4_request("GET", None, &format!("/{}", bucket.as_str()), &Vec::new(), Vec::new()))).unwrap_or("").to_string() },
+                        UrlStyle::HOST => { std::str::from_utf8(&try!(self.aws_v4_request("GET", Some(bucket), "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string() }
+                    };
                     match self.format {
                         Format::JSON => {
                             for cap in re.captures_iter(&res) {
