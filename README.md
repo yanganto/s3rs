@@ -65,7 +65,7 @@ Clone the code
 `cargo install s3rs`
 
 # Demo
-- A short demo [video](https://youtu.be/DnWQbDmBFpg)
+- A short demo [video](https://youtu.be/MtPYhJnbMfs)
 - snapshot
-![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example.png)
+[![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example.png)](https://youtu.be/MtPYhJnbMfs)
 
