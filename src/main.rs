@@ -236,7 +236,11 @@ fn main() {
                     Err(e) => println!("{}", e),
                     Ok(_) => println!("tag removed")
                 },
-                _ => println!("only support these tag actions: add, put, del, rm")
+                "ls"|"list" => match handler.list_tag(target){
+                    Err(e) => println!("{}", e),
+                    Ok(_) => {}
+                }
+                _ => println!("only support these tag actions: ls, add, put, del, rm")
             }
         } else if command.starts_with("mb"){
             print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap_or("")));
@@ -304,6 +308,9 @@ USAGE:
     {10} s3://{2}/{7} 
         delete the object
 
+    {29} {1}/{36} s3://{2}/{7}
+        list tags of the object
+
     {29} {33}/{5} s3://{2}/{7}  {30}={31} ...
         add tags to the object
 
@@ -346,7 +353,7 @@ USAGE:
             "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
             "format".bold(), "xml".blue(), "json".blue(), "exit".bold(), "tag".bold(),
             "<key>".cyan(), "<value>".cyan(), "trace".blue(), "add".bold(), "logout".bold(), 
-            "Ctrl + D".bold()//35
+            "Ctrl + D".bold(), "list".bold()//36
             ); 
         } else {
             println!("command {} not found, help for usage or exit for quit", command);

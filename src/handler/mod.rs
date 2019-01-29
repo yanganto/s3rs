@@ -631,6 +631,43 @@ impl<'a> Handler<'a>  {
         Ok(())
     }
 
+    pub fn list_tag(&self, target: &str) -> Result<(), &'static str>  {
+        let res: String;
+        debug!("target: {:?}", target);
+        if target == "" {return Err("please specific the object")}
+        let re = Regex::new(S3_FORMAT).unwrap();
+        let mut virtural_host = None;
+        let uri:String;
+        let caps = match re.captures(target) {
+            Some(c) => c,
+            None => return Err("S3 object format error.")
+        };
+
+        if &caps["object"] == ""{
+            return Err("Please specific the object")
+        }
+
+        match  self.url_style {
+            UrlStyle::PATH => {
+                uri = format!("/{}{}", &caps["bucket"], &caps["object"]);
+            },
+            UrlStyle::HOST=> {
+                virtural_host = Some(format!("{}", &caps["bucket"]));
+                uri = format!("{}", &caps["object"]);
+            }
+        }
+
+        let query_string = vec![("tagging", "")];
+        res = match self.auth_type {
+            AuthType::AWS4 => {std::str::from_utf8(&try!(self.aws_v4_request("GET", virtural_host, &uri, &query_string, Vec::new()))).unwrap_or("").to_string()},
+            AuthType::AWS2 => {std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &query_string, &Vec::new()))).unwrap_or("").to_string()}
+        };
+	// TODO:
+        // parse tagging output when CEPH tagging json format respose bug fixed
+	println!("{}", res);
+        Ok(())
+    }
+
     pub fn add_tag(&self, target: &str, tags: &Vec<(&str, &str)>) -> Result<(), &'static str>  {
         debug!("target: {:?}", target);
         debug!("tags: {:?}", tags);
