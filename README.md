@@ -68,4 +68,5 @@ Clone the code
 - A short demo [video](https://youtu.be/MtPYhJnbMfs)
 - snapshot
 [![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example.png)](https://youtu.be/MtPYhJnbMfs)
+[![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example2.png)](https://youtu.be/MtPYhJnbMfs)
 
