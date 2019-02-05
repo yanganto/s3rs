@@ -1,6 +1,6 @@
 [package]
 name = "s3rs"
-version = "0.1.21"
+version = "0.1.22"
 authors = ["Antonio Yang <yanganto@gmail.com>"]
 description = "A s3 cli client with multi configs with diffent provider"
 keywords = ["S3", "Amazon", "ceph", "AWS"]
