@@ -8,6 +8,7 @@ a **S3** **R**ich **S**upport client
 - easy to debug with http protocol
 - AWS4, AWS2 support
 - support http redirect for multi region of AWS S3
+- support automatically multipart upload
 
 current status:  
 
