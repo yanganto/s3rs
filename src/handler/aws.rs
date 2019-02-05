@@ -61,7 +61,7 @@ pub fn signed_headers(headers:&mut Vec<(&str, &str)>) -> String {
 pub fn hash_payload(payload: &Vec<u8>) -> String {
     let mut sha = Sha256::new();
     sha.input(payload);
-    debug!("payload request hash = {}", sha.result_str());
+    debug!("payload (size: {}) request hash = {}", payload.len(), sha.result_str());
     sha.result_str()
 }
 

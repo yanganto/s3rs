@@ -1,5 +1,5 @@
 use std;
-use std::fs::{File, write};
+use std::fs::{File, write, metadata};
 use std::io::prelude::*;
 use std::str::FromStr;
 use std::path::Path;
@@ -45,7 +45,7 @@ pub struct Handler<'a>{
     pub region: Option<String>
 }
 
-fn print_response(res: &mut Response) -> Vec<u8>{
+fn print_response(res: &mut Response) -> (Vec<u8>, reqwest::header::HeaderMap) {
     let mut body = Vec::new();
     let _ =res.read_to_end(&mut body);
     if res.status().is_success() || res.status().is_redirection(){
@@ -57,11 +57,11 @@ fn print_response(res: &mut Response) -> Vec<u8>{
         error!("Headers:\n{:?}", res.headers());
         error!("Body:\n{}\n\n", std::str::from_utf8(&body).expect("Body can not decode as UTF8"));
     }
-    body 
+    (body, res.headers().clone())
 }
 
 impl<'a> Handler<'a>  {
-    fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &Vec<u8>) -> Result<Vec<u8>, &'static str>{
+    fn aws_v2_request(&self, method: &str, uri: &str, qs: &Vec<(&str, &str)>, payload: &Vec<u8>) -> Result<(Vec<u8>, reqwest::header::HeaderMap), &'static str>{
 
         let utc: DateTime<Utc> = Utc::now();   
         let mut headers = header::HeaderMap::new();
@@ -106,6 +106,7 @@ impl<'a> Handler<'a>  {
             "GET" => {action = client.get(query.as_str());},
             "PUT" => {action = client.put(query.as_str());},
             "DELETE" => {action = client.delete(query.as_str());},
+            "POST" => {action = client.post(query.as_str());},
             _ => {
                 error!("unspport HTTP verb");
                 action = client.get(query.as_str());
@@ -118,7 +119,7 @@ impl<'a> Handler<'a>  {
     }
 
     // region, endpoint parameters are used for HTTP redirect
-    fn _aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>, region:Option<String>, endpoint:Option<String>) -> Result<Vec<u8>, &'static str> {
+    fn _aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>, region:Option<String>, endpoint:Option<String>) -> Result<(Vec<u8>, reqwest::header::HeaderMap), &'static str> {
         let utc: DateTime<Utc> = Utc::now();   
         let mut headers = header::HeaderMap::new();
         let time_str = utc.format("%Y%m%dT%H%M%SZ").to_string();
@@ -194,6 +195,7 @@ impl<'a> Handler<'a>  {
             "GET" => {action = client.get(query.as_str());},
             "PUT" => {action = client.put(query.as_str());},
             "DELETE" => {action = client.delete(query.as_str());},
+            "POST" => {action = client.post(query.as_str());}
             _ => {
                 error!("unspport HTTP verb");
                 action = client.get(query.as_str());
@@ -203,8 +205,8 @@ impl<'a> Handler<'a>  {
             Ok(mut res) => {
                 match res.status().is_redirection() {
                     true  => {
-                        let body = print_response(&mut res);
-                        let result = std::str::from_utf8(&body).unwrap_or("");
+                        let response = print_response(&mut res);
+                        let result = std::str::from_utf8(&response.0).unwrap_or("");
                         let mut endpoint = "".to_string();
                         match self.format {
                             Format::JSON => {
@@ -241,20 +243,18 @@ impl<'a> Handler<'a>  {
             },
             Err(_) => Err("Reqwest Error") //XXX
         }
-
     }
 
-    fn aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+    fn aws_v4_request(&self, method: &str, virtural_host: Option<String>, uri: &str, qs: &Vec<(&str, &str)>, payload: Vec<u8>) -> Result<(Vec<u8>, reqwest::header::HeaderMap), &'static str> {
         self._aws_v4_request(method, virtural_host, uri, qs, payload, self.region.clone(), None)
     }
 
     pub fn la(&self) -> Result<(), &'static str> {
         let re = Regex::new(RESPONSE_FORMAT).unwrap();
-        let mut res: String;
-        match self.auth_type {
-            AuthType::AWS4 => { res = std::str::from_utf8(&try!(self.aws_v4_request("GET", None,"/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
-            AuthType::AWS2 => { res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
-        }
+        let mut res = match self.auth_type {
+            AuthType::AWS4 => { std::str::from_utf8(&try!(self.aws_v4_request("GET", None,"/", &Vec::new(), Vec::new())).0).unwrap_or("").to_string()},
+            AuthType::AWS2 => { std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())).0).unwrap_or("").to_string()}
+        };
         let result:serde_json::Value;
         let mut buckets = Vec::new();
         match self.format {
@@ -295,8 +295,8 @@ impl<'a> Handler<'a>  {
             match self.auth_type {
                 AuthType::AWS4 => { 
                     res = match self.url_style {
-                        UrlStyle::PATH => { std::str::from_utf8(&try!(self.aws_v4_request("GET", None, &format!("/{}", bucket.as_str()), &Vec::new(), Vec::new()))).unwrap_or("").to_string() },
-                        UrlStyle::HOST => { std::str::from_utf8(&try!(self.aws_v4_request("GET", Some(bucket), "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string() }
+                        UrlStyle::PATH => { std::str::from_utf8(&try!(self.aws_v4_request("GET", None, &format!("/{}", bucket.as_str()), &Vec::new(), Vec::new())).0).unwrap_or("").to_string() },
+                        UrlStyle::HOST => { std::str::from_utf8(&try!(self.aws_v4_request("GET", Some(bucket), "/", &Vec::new(), Vec::new())).0).unwrap_or("").to_string() }
                     };
                     match self.format {
                         Format::JSON => {
@@ -325,7 +325,7 @@ impl<'a> Handler<'a>  {
                     }
                 },
                 AuthType::AWS2 => { 
-                    res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}", bucket.as_str()), &Vec::new(), &Vec::new()))).unwrap_or("").to_string();
+                    res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}", bucket.as_str()), &Vec::new(), &Vec::new())).0).unwrap_or("").to_string();
                     match self.format {
                         Format::JSON => {
                             for cap in re.captures_iter(&res) {
@@ -379,8 +379,8 @@ impl<'a> Handler<'a>  {
                     uri = format!("/{}", b);
                 }
                 match self.auth_type {
-                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", vitural_host.clone(), &uri, &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
-                    AuthType::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
+                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", vitural_host.clone(), &uri, &Vec::new(), Vec::new())).0).unwrap_or("").to_string();},
+                    AuthType::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", &uri, &Vec::new(), &Vec::new())).0).unwrap_or("").to_string();}
                 }
                 match self.format {
                     Format::JSON => {
@@ -416,8 +416,8 @@ impl<'a> Handler<'a>  {
             },
             None => {
                 match self.auth_type {
-                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", None, "/", &Vec::new(), Vec::new()))).unwrap_or("").to_string();},
-                    AuthType::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new()))).unwrap_or("").to_string();}
+                    AuthType::AWS4 => {res = std::str::from_utf8(&try!(self.aws_v4_request("GET", None, "/", &Vec::new(), Vec::new())).0).unwrap_or("").to_string();},
+                    AuthType::AWS2 => {res = std::str::from_utf8(&try!(self.aws_v2_request("GET", "/", &Vec::new(), &Vec::new())).0).unwrap_or("").to_string();}
                 }
                 match self.format {
                     Format::JSON => {
@@ -469,17 +469,6 @@ impl<'a> Handler<'a>  {
         let mut content: Vec<u8>;
 
 
-        if !Path::new(file).exists() && file == "test"{ 
-            content = vec![83, 51, 82, 83, 32, 116, 101, 115, 116, 10];  // S3RS test/n
-        } else {
-            let mut fin = match File::open(file) {
-                Ok(f) => f,
-                Err(_) => return Err("input file open error")
-            };
-            content = Vec::new();
-            let _ = fin.read_to_end(&mut content);
-        }
-
         let uri = if &caps["object"] == "" || &caps["object"] == "/" {
             let file_name =  Path::new(file).file_name().unwrap().to_string_lossy();
             format!("/{}/{}", &caps["bucket"], file_name)
@@ -487,10 +476,110 @@ impl<'a> Handler<'a>  {
             format!("/{}{}", &caps["bucket"], &caps["object"])
         };
 
-        match self.auth_type {
-            AuthType::AWS4 => {try!(self.aws_v4_request("PUT", None, &uri, &Vec::new(), content));},
-            AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &content));}
-        };
+        if !Path::new(file).exists() && file == "test"{ 
+            // TODO: add time info in the test file
+            content = vec![83, 51, 82, 83, 32, 116, 101, 115, 116, 10];  // S3RS test/n
+        } else {
+            let file_size = match metadata(Path::new(file)) {
+                Ok(m) => {m.len()},
+                Err(e) => {
+                    error!("file meta error: {}",e);
+                    0
+                }
+            };
+
+            debug!("upload file size: {}", file_size);
+
+
+            if file_size > 5242880 {
+                let res = match self.auth_type {
+                    AuthType::AWS4 => {std::str::from_utf8(&try!(self.aws_v4_request("POST", None, &uri, &vec![("uploads", "")], Vec::new())).0).unwrap_or("").to_string()},
+                    AuthType::AWS2 => {std::str::from_utf8(&try!(self.aws_v2_request("POST", &uri, &vec![("uploads", "")], &Vec::new())).0).unwrap_or("").to_string()}
+                };
+                let mut upload_id = "".to_string();
+                match self.format {
+                    Format::JSON => {
+                        error!("No JSON Multipart Implement");
+                    },
+                    Format::XML => {
+                        let mut reader = Reader::from_str(&res);
+                        let mut in_tag = false;
+                        let mut buf = Vec::new();
+
+                        loop {
+                            match reader.read_event(&mut buf) {
+                                Ok(Event::Start(ref e)) => {
+                                    if e.name() == b"UploadId" { in_tag = true; }
+                                },
+                                Ok(Event::End(ref e)) => {
+                                    if e.name() == b"UploadId" { in_tag = false; }
+                                },
+                                Ok(Event::Text(e)) => {
+                                    if in_tag { upload_id = e.unescape_and_decode(&reader).unwrap(); }
+                                },
+                                Ok(Event::Eof) => break, 
+                                Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+                                _ => (), 
+                            }
+                            buf.clear();
+                        }
+                    }
+                }
+
+                info!("upload id: {}", upload_id);
+
+                let mut etags = Vec::new();
+                let mut part = 0u64;
+                let mut fin = match File::open(file) {
+                    Ok(f) => f,
+                    Err(_) => return Err("input file open error")
+                };
+                loop {
+                    let mut buffer = [0; 5242880];
+                    match fin.read_exact(&mut buffer) {
+                        Ok(_) => {},
+                        Err(e) => {error!("partial read file error: {}", e);}
+                    };
+
+                    part += 1;
+
+                    trace!("part {}, size: {}", part, buffer.to_vec().len());
+
+                    let headers = match self.auth_type {
+                        AuthType::AWS4 => {try!(self.aws_v4_request("PUT", None, &uri, &vec![("uploadId", upload_id.as_str()), ("partNumber", part.to_string().as_str())], buffer.to_vec())).1},
+                        AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &vec![("uploadId", upload_id.as_str()), ("partNumber", part.to_string().as_str())], & buffer.to_vec())).1}
+                    };
+                    let etag = headers[reqwest::header::ETAG].to_str().expect("unexpected etag from server");
+                    etags.push((part.clone(), etag.to_string()));
+                    info!("part: {} uploaded, etag: {}", part, etag);
+
+                    if part * 5242880 >= file_size {
+                        let mut content = format!("<CompleteMultipartUpload>");
+                        for etag in etags {
+                            content.push_str(&format!("<Part><PartNumber>{}</PartNumber><ETag>{}</ETag></Part>", etag.0, etag.1));
+                        };
+                        content.push_str(&format!("</CompleteMultipartUpload>"));
+                        match self.auth_type {
+                            AuthType::AWS4 => {self.aws_v4_request("POST", None, &uri, &vec![("uploadId", upload_id.as_str())], content.into_bytes());},
+                            AuthType::AWS2 => {self.aws_v2_request("POST", &uri, &vec![("uploadId", upload_id.as_str())], &content.into_bytes());}
+                        };
+                        info!("complete multipart");
+                        break;
+                    }
+                }
+            } else {
+                content = Vec::new();
+                let mut fin = match File::open(file) {
+                    Ok(f) => f,
+                    Err(_) => return Err("input file open error")
+                };
+                let _ = fin.read_to_end(&mut content);
+                match self.auth_type {
+                    AuthType::AWS4 => {try!(self.aws_v4_request("PUT", None, &uri, &Vec::new(), content));},
+                    AuthType::AWS2 => {try!(self.aws_v2_request("PUT", &uri, &Vec::new(), &content));}
+                };
+            };
+        }
         Ok(())
     }
 
@@ -526,13 +615,13 @@ impl<'a> Handler<'a>  {
                         uri = format!("{}", &caps["object"]);
                     }
                 }
-                match write(fout, try!(self.aws_v4_request("GET", virtural_host, &uri, &Vec::new(), Vec::new()))){
+                match write(fout, try!(self.aws_v4_request("GET", virtural_host, &uri, &Vec::new(), Vec::new())).0){
                     Ok(_) => return Ok(()),
                     Err(_) => return Err("write file error") //XXX
                 }
             },
             AuthType::AWS2 => {
-                match write(fout, try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()))){
+                match write(fout, try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new())).0){
                     Ok(_) => return Ok(()),
                     Err(_) => return Err("write file error") //XXX
                 }
@@ -566,13 +655,13 @@ impl<'a> Handler<'a>  {
                     }
                 }
                 match self.aws_v4_request("GET", virtural_host, &uri, &Vec::new(), Vec::new()){
-                    Ok(b) => { println!("{}", std::str::from_utf8(&b).unwrap_or("")); return Ok(()) },
+                    Ok(r) => { println!("{}", std::str::from_utf8(&r.0).unwrap_or("")); return Ok(()) },
                     Err(e) => return Err(e) 
                 }
             },
             AuthType::AWS2 => {
                 match self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &Vec::new(), &Vec::new()){
-                    Ok(b) => { println!("{}", std::str::from_utf8(&b).unwrap_or("")); return Ok(()) },
+                    Ok(r) => { println!("{}", std::str::from_utf8(&r.0).unwrap_or("")); return Ok(()) },
                     Err(e) => return Err(e) 
                 }
             }
@@ -659,8 +748,8 @@ impl<'a> Handler<'a>  {
 
         let query_string = vec![("tagging", "")];
         res = match self.auth_type {
-            AuthType::AWS4 => {std::str::from_utf8(&try!(self.aws_v4_request("GET", virtural_host, &uri, &query_string, Vec::new()))).unwrap_or("").to_string()},
-            AuthType::AWS2 => {std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &query_string, &Vec::new()))).unwrap_or("").to_string()}
+            AuthType::AWS4 => {std::str::from_utf8(&try!(self.aws_v4_request("GET", virtural_host, &uri, &query_string, Vec::new())).0).unwrap_or("").to_string()},
+            AuthType::AWS2 => {std::str::from_utf8(&try!(self.aws_v2_request("GET", &format!("/{}{}", &caps["bucket"], &caps["object"]), &query_string, &Vec::new())).0).unwrap_or("").to_string()}
         };
 	// TODO:
         // parse tagging output when CEPH tagging json format respose bug fixed
@@ -765,7 +854,7 @@ impl<'a> Handler<'a>  {
             AuthType::AWS4 => {try!(self.aws_v4_request("GET", None, &uri, &query_strings, Vec::new()))},
             AuthType::AWS2 => {try!(self.aws_v2_request("GET", &uri, &query_strings, &Vec::new()))}
         };
-        println!("{}", std::str::from_utf8(&result).unwrap_or(""));
+        println!("{}", std::str::from_utf8(&result.0).unwrap_or(""));
         Ok(())
     }
 
