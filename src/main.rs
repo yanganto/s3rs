@@ -20,10 +20,8 @@ extern crate serde_json;
 extern crate regex;
 extern crate quick_xml;
 extern crate colored;
+extern crate s3handler;
 
-
-
-mod handler;
 
 use std::io;
 use std::io::{Read, Write, BufReader, BufRead};
@@ -58,19 +56,10 @@ impl log::Log for MyLogger {
     fn flush(&self) {}
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct CredentialConfig {
-    host: String,
-    user: Option<String>,
-    access_key: String,
-    secrete_key: String,
-    region: Option<String>,
-    s3_type: Option<String>
-}
 
 #[derive(Debug, Deserialize)]
 struct Config {
-    credential: Option<Vec<CredentialConfig>>
+    credential: Option<Vec<s3handler::CredentialConfig>>
 }
 impl <'a> Config {
     fn gen_selecitons(&'a self) -> Vec<String>{
@@ -93,10 +82,10 @@ impl <'a> Config {
 fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T) 
     -> io::Result<T> where T: FromStr + Ord {
 
-    try!(tty.write_all(prompt.as_bytes()));
+    tty.write_all(prompt.as_bytes());
     let mut reader = io::BufReader::new(tty);
     let mut result = String::new();
-    try!(reader.read_line(&mut result));
+    reader.read_line(&mut result);
     match result.replace("\n", "").parse::<T>() {
         Ok(x) => if x >= min && x <= max { Ok(x) } 
                  else { read_parse(reader.into_inner(), prompt, min, max) },
@@ -105,12 +94,12 @@ fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T)
 }
 
 fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::Result<usize> {
-    let mut tty = try!(OpenOptions::new().read(true).write(true).open("/dev/tty"));
+    let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty")?;
     let pad_len = ((items.len() as f32).log10().floor() + 1.0) as usize;
     for (i, item) in items.iter().enumerate() {
-        try!(tty.write_all(format!("{1:0$}. {2}\n", pad_len, i + 1, item.as_ref().replace("\n", "")).as_bytes()))
+        tty.write_all(format!("{1:0$}. {2}\n", pad_len, i + 1, item.as_ref().replace("\n", "")).as_bytes())?
     }
-    let idx = try!(read_parse::<usize>(&mut tty, prompt, 1, items.len())) - 1;
+    let idx = read_parse::<usize>(&mut tty, prompt, 1, items.len())? - 1;
     Ok(idx)
 }
 
@@ -141,7 +130,7 @@ fn main() {
 
     let mut chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
     let config_list = config.credential.unwrap();
-    let mut handler = handler::Handler::init_from_config(&config_list[chosen_int]);
+    let mut handler = s3handler::Handler::init_from_config(&config_list[chosen_int]);
     let mut login_user = config_list[chosen_int].user.clone().unwrap_or("unknown".to_string());
 
     println!("enter command, help for usage or exit for quit");
@@ -262,7 +251,7 @@ fn main() {
         } else if command.starts_with("logout"){ 
             println!("");
             chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
-            handler = handler::Handler::init_from_config(&config_list[chosen_int]);
+            handler = s3handler::Handler::init_from_config(&config_list[chosen_int]);
             login_user = config_list[chosen_int].user.clone().unwrap_or(" ".to_string());
         } else if command.starts_with("log"){ 
             change_log_type(&command);
