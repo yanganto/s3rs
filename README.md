@@ -3,6 +3,7 @@ s3rs
 [![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
 
 a **S3** **R**ich **S**upport client
+- rust edition 2018
 - multi config
 - interactive command line tool
 - easy to debug with http protocol
@@ -20,7 +21,7 @@ current status:
 | ls s3://[bucket]                                          | list objects in the bucket                  | O    | O   |
 | mb [bucket]                                               | create bucket                               | O    | O   |
 | rb [bucket]                                               | delete bucket                               | O    | O   |
-| put [file] s3://[bucket]/[object]                         | upload the file sepcific object name        | O    | 0   |
+| put [file] s3://[bucket]/[object]                         | upload the file sepcific object name        | O    | O   |
 | put [file] s3://[bucket]                                  | upload the file use file name as objec name | O    | O   |
 | put test s3://[bucket]/[object]                           | upload a test file sepcific object name     | O    | O   |
 | get s3://[bucket]/[object] file                           | download objec                              | O    | O   |
