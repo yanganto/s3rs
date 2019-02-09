@@ -8,7 +8,7 @@ categories = ["command-line-interface"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/yanganto/s3rs"
-
+edition = "2018"
 
 [dependencies]
 interactor = "0.1.1"
@@ -32,3 +32,9 @@ serde_json = "1.0"
 regex = "0.2"
 quick-xml = "0.12.0"
 colored = "^1.6.1"
+s3handler = "0.1.1"
+
+# Patch for s3handler
+# [patch.crates-io]
+# s3handler = { path = "../s3handler" }
+# s3handler = { git = "https://github.com/yanganto/s3handler", branch = "master" }
