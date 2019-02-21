@@ -50,21 +50,33 @@ current status:
 | ceph    | aws4      | json   | path-style                      |
 | aws     | aws4      | xml    | virtual-hosted–style            |
 
+# Install 
+## Prepare environment
+Install rust tools via rustup
+- [Rustup](https://www.rust-lang.org/tools/install)
 
-# Build Environment
+or download and install Rust and Cargo (Rust package manager)
+- [Install Rust](https://www.rust-lang.org/en-US/install.html)
+- [Install Cargo](https://crates.io/)
+## Build & Install
+It is easy to install s3rs via cargo as following command.
+`cargo install s3rs`
+
+or manually install
+- `git clone https://github.com/yanganto/s3rs.git`
+- `cargo build --release`
+- The excutable binary will in `./target/release/s3rs`
+
+# Develop
+## Environment
 Please download and install Rust and Cargo (Rust package manager)
 - [Install Rust](https://www.rust-lang.org/en-US/install.html)
 - [Install Cargo](https://crates.io/)
 
-Clone the code
-`git clone https://github.com/yanganto/s3rs.git`
-
-# Build
-- `cargo build --release`
-- The excutable binary will in `./target/release/s3rs`
-
-# Install from cargo
-`cargo install s3rs`
+## Build
+- `git clone https://github.com/yanganto/s3rs.git`
+- `cargo build`
+- The excutable binary will in `./target/debug/s3rs`
 
 # Demo
 - A short demo [video](https://youtu.be/MtPYhJnbMfs)
