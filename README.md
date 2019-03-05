@@ -34,6 +34,7 @@ current status:
 | tag put s3://[bucket]/[object] key1=value1 [key2=value2]  | add tag(s) to the object                    | O    | O   |
 | tag del s3://[bucket]/[object]                            | remove tag(s) from the object               | O    | O   |
 | tag rm s3://[bucket]/[object]                             | remove tag(s) from the object               | O    | O   |
+| usage s3://[bucket]                                       | show the bucket usage (ceph only)           | O    | -   |
 | /uri?query                                                | give the orignal url                        | O    | O   |
 |-----------------------------------------------------------|---------------------------------------------|------|-----|
 | s3\_type [ceph/aws/aws4/aws2]                             | change the api for different S3 providor    |      |     |

@@ -67,7 +67,7 @@ impl <'a> Config {
         let credential = &self.credential.clone().unwrap();
         for cre in credential.into_iter(){
             let c = cre.clone();
-            let mut option = String::from(format!("[{}] {} ({}) {} ({})", 
+            let option = String::from(format!("[{}] {} ({}) {} ({})", 
                                                   c.s3_type.unwrap_or(String::from("aws")), 
                                                   c.host, 
                                                   c.region.unwrap_or(String::from("us-east-1")), 
@@ -231,6 +231,28 @@ fn main() {
                 }
                 _ => println!("only support these tag actions: ls, add, put, del, rm")
             }
+        } else if command.starts_with("usage"){
+            let mut iter = command.split_whitespace();
+            let target = iter.nth(1).unwrap_or("");
+            let mut options = Vec::new();
+            loop {
+                match iter.next() {
+                    Some(kv_pair) => {
+                        match kv_pair.find('=') {
+                            Some(_) => {
+                                options.push(
+                                    (kv_pair.split('=').nth(0).unwrap(),
+                                     kv_pair.split('=').nth(1).unwrap()))},
+                            None =>  {options.push((&kv_pair, ""))}
+                        }
+                    }
+                    None =>{break;}
+                };
+            }
+            match handler.usage(target, &options) {
+                Err(e) => println!("{}", e),
+                Ok(_) => {}
+            }
         } else if command.starts_with("mb"){
             print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap_or("")));
         } else if command.starts_with("rb"){
@@ -334,6 +356,11 @@ USAGE:
 
     {34} / {35}
         logout and reselect account
+
+    {37} s3://{2}
+        show the usage of the bucket (ceph only)
+
+    If you have any issue, please submit to here https://github.com/yanganto/s3rs/issues 
         "#, 
             "la".bold(), "ls".bold(), "<bucket>".cyan(), "mb".bold(), "rm".bold(),
             "put".bold(), "<file>".cyan(), "<object>".cyan(), "get".bold(), "cat".bold(),
@@ -342,7 +369,7 @@ USAGE:
             "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
             "format".bold(), "xml".blue(), "json".blue(), "exit".bold(), "tag".bold(),
             "<key>".cyan(), "<value>".cyan(), "trace".blue(), "add".bold(), "logout".bold(), 
-            "Ctrl + D".bold(), "list".bold()//36
+            "Ctrl + D".bold(), "list".bold(), "usage".bold()//37
             ); 
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
