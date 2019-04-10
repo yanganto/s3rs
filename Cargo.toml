@@ -35,6 +35,6 @@ colored = "^1.6.1"
 s3handler = "0.2.0"
 
 # Patch for s3handler
-[patch.crates-io]
-s3handler = { path = "../s3handler" }
+# [patch.crates-io]
+# s3handler = { path = "../s3handler" }
 # s3handler = { git = "https://github.com/yanganto/s3handler", branch = "master" }
