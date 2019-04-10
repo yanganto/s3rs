@@ -116,7 +116,7 @@ fn main() {
     } else {
         f = File::create(s3rscfg).expect("Can not write s3rs config file");
         let _ = f.write_all(
-            b"[[credential]]\ns3_type = \"aws\"\nhost = \"s3.us-east-1.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecrete_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
+            b"[[credential]]\ns3_type = \"aws\"\nhost = \"s3.us-east-1.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecret_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
             );
         print!("Config file {} is created in your home folder, please edit it and add your credentials", ".s3rs.toml".bold());
         return 

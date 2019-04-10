@@ -52,30 +52,30 @@ current status:
 | aws     | aws4      | xml    | virtual-hosted–style            |
 
 # Install 
-## Prepare environment
-Install rust tools via rustup
-- [Rustup](https://www.rust-lang.org/tools/install)
+Install rust tools rustup and cargo 
+- `curl https://sh.rustup.rs -sSf | sh`
 
-or download and install Rust and Cargo (Rust package manager)
-- [Install Rust](https://www.rust-lang.org/en-US/install.html)
-- [Install Cargo](https://crates.io/)
-## Build & Install
+Additional package for ubuntu
+- `apt-get install libssl-dev`
+
 It is easy to install s3rs via cargo as following command.
-`cargo install s3rs`
+- `cargo install s3rs`
 
-or manually install
-- `git clone https://github.com/yanganto/s3rs.git`
-- `cargo build --release`
-- The excutable binary will in `./target/release/s3rs`
+Set up the path for rust binnary
+- `export PATH=$PATH:~/.cargo/bin`
+
+The config file will auto setup when binary first time launch
+- `s3rs`
+
+edit the config file at ~/.s3rs.toml
+- `vi ~/.s3rs.toml`
+
 
 # Develop
-## Environment
-Please download and install Rust and Cargo (Rust package manager)
-- [Install Rust](https://www.rust-lang.org/en-US/install.html)
-- [Install Cargo](https://crates.io/)
-
-## Build
+Install rust tools rustup and cargo 
+- `curl https://sh.rustup.rs -sSf | sh`
 - `git clone https://github.com/yanganto/s3rs.git`
+- `cargo test`
 - `cargo build`
 - The excutable binary will in `./target/debug/s3rs`
 
