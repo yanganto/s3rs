@@ -13,37 +13,47 @@ an **S3** **R**ich **S**upport client
 
 current status:  
 
-| COMMAND                                                          | FUNCTION                                     | CEPH | AWS |
-|------------------------------------------------------------------|----------------------------------------------|------|-----|
-| la                                                               | list all objects                             | O    | O   |
-| ls                                                               | list buckets                                 | O    | O   |
-| ls <bucket>                                                      | list objects in the bucket                   | O    | O   |
-| ls s3://<bucket>                                                 | list objects in the bucket                   | O    | O   |
-| mb <bucket>                                                      | create bucket                                | O    | O   |
-| rb <bucket>                                                      | delete bucket                                | O    | O   |
-| put <file> s3://<bucket>/<object>                                | upload the file sepcific object name         | O    | O   |
-| put <file> s3://<bucket>                                         | upload the file use file name as object name | O    | O   |
-| put test s3://<bucket>/<object>                                  | upload a test file sepcific object name      | O    | O   |
-| get s3://<bucket>/<object> <file>                                | download object                              | O    | O   |
-| get s3://<bucket>/<object>                                       | download object in current folder            | O    | O   |
-| cat s3://<bucket>/<object>                                       | show the object content                      | O    | O   |
-| del s3://<bucket>/<object>                                       | delete the object                            | O    | O   |
-| tag list s3://<bucket>/<object>                                  | list tag(s) to the object                    | O    | O   |
-| tag ls s3://<bucket>/<object>                                    | list tag(s) to the object                    | O    | O   |
-| tag add s3://<bucket>/<object> <key1>=<value1> [key2=value2] ... | add tag(s) to the object                     | O    | O   |
-| tag put s3://<bucket>/<object> <key1>=<value1> [key2=value2] ... | add tag(s) to the object                     | O    | O   |
-| tag del s3://<bucket>/<object>                                   | remove tag(s) from the object                | O    | O   |
-| tag rm s3://<bucket>/<object>                                    | remove tag(s) from the object                | O    | O   |
-| usage s3://<bucket>                                              | show the bucket usage (ceph only)            | O    | -   |
-| /uri?query                                                       | give the orignal url                         | O    | O   |
-|------------------------------------------------------------------|----------------------------------------------|------|-----|
-| s3\_type [ceph/aws/aws4/aws2]                                    | change the api for different S3 providor     |      |     |
-| log [trace/debug/info/erro]                                      | change the log level                         |      |     |
-|                                                                  | - Info : for Http header and body            |      |     |
-|                                                                  | - debug: for auth signature hash info        |      |     |
-|                                                                  | - trace: more detail about rust              |      |     |
-| logout                                                           | logout and reselect user                     |      |     |
-| Ctrl + d                                                         | logout and reselect user                     |      |     |
+| COMMAND                                                          | FUNCTION                                            | CEPH | AWS |
+|------------------------------------------------------------------|-----------------------------------------------------|------|-----|
+| la                                                               | list all objects                                    | O    | O   |
+| ls                                                               | list buckets                                        | O    | O   |
+| ls <bucket>                                                      | list objects in the bucket                          | O    | O   |
+| ls s3://<bucket>                                                 | list objects in the bucket                          | O    | O   |
+| mb <bucket>                                                      | create bucket                                       | O    | O   |
+| rb <bucket>                                                      | delete bucket                                       | O    | O   |
+| put <file> s3://<bucket>/<object>                                | upload the file                                     | O    | O   |
+| put <file> s3://<bucket>                                         | upload the file (file name as object name)          | O    | O   |
+| put test s3://<bucket>/<object>                                  | upload a test file sepcific object name             | O    | O   |
+| get s3://<bucket>/<object> <file>                                | download object                                     | O    | O   |
+| get s3://<bucket>/<object>                                       | download object in current folder                   | O    | O   |
+| cat s3://<bucket>/<object>                                       | show the object content                             | O    | O   |
+| del s3://<bucket>/<object>                                       | delete the object                                   | O    | O   |
+| tag list s3://<bucket>/<object>                                  | list tag(s) to the object                           | O    | O   |
+| tag ls s3://<bucket>/<object>                                    | list tag(s) to the object                           | O    | O   |
+| tag add s3://<bucket>/<object> <key1>=<value1> [key2=value2] ... | add tag(s) to the object                            | O    | O   |
+| tag put s3://<bucket>/<object> <key1>=<value1> [key2=value2] ... | add tag(s) to the object                            | O    | O   |
+| tag del s3://<bucket>/<object>                                   | remove tag(s) from the object                       | O    | O   |
+| tag rm s3://<bucket>/<object>                                    | remove tag(s) from the object                       | O    | O   |
+| /uri?query                                                       | give the orignal url                                | O    | O   |
+
+| HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
+|--------------------|------------------------------------------------------------------------------------------|------|-----|
+| info s3://<bucket> | acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph) | O    | O   |
+
+| CEPH OPS API (use system keys) | CEPH ONLY FUNCTION                                  | 
+|--------------------------------|-----------------------------------|
+| usage s3://<bucket>            | show the bucket usage  |
+
+
+| SHELL SETTING                 | FUNCTION                                 |
+|-------------------------------|------------------------------------------|
+| s3\_type [ceph/aws/aws4/aws2] | change the api for different S3 providor |
+| log [trace/debug/info/erro]   | change the log level                     |
+|                               | - Info : for Http header and body        |
+|                               | - debug: for auth signature hash info    |
+|                               | - trace: more detail about rust          |
+| logout                        | logout and reselect user                 |
+| Ctrl + d                      | logout and reselect user                 |
 
 
 | S3 TYPE | AUTH TYPE | FORMAT | URL STYLE            |
