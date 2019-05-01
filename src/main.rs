@@ -31,8 +31,10 @@ use std::str::FromStr;
 use std::io::stdout;
 use log::{Record, Level, Metadata, LevelFilter};
 use colored::*;
+use regex::Regex;
 
 static MY_LOGGER: MyLogger = MyLogger;
+static S3_FORMAT: &'static str = r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
 
 struct MyLogger;
 
@@ -132,6 +134,7 @@ fn main() {
     let config_list = config.credential.unwrap();
     let mut handler = s3handler::Handler::init_from_config(&config_list[chosen_int]);
     let mut login_user = config_list[chosen_int].user.clone().unwrap_or("unknown".to_string());
+    let mut s3_type = config_list[chosen_int].s3_type.clone().unwrap_or("aws".to_string());
 
     println!("enter command, help for usage or exit for quit");
 
@@ -262,6 +265,32 @@ fn main() {
                 Err(e) => println!("{}", e),
                 Ok(_) => {}
             };
+        } else if command.starts_with("info"){
+            let target = command.split_whitespace().nth(1).unwrap_or("");
+            let caps;
+            let bucket = if target.starts_with("s3://") || target.starts_with("S3://") {
+                let re = Regex::new(S3_FORMAT).unwrap();
+                caps = re.captures(command.split_whitespace().nth(1).unwrap_or(""))
+                    .expect("S3 object format error.");
+                &caps["bucket"]
+            } else {
+                target
+            };
+            println!("{}", "location:".yellow().bold());
+            let _ = handler.url_command(format!("/{}?location", bucket).as_str());
+            println!("\n{}", "acl:".yellow().bold());
+            let _ = handler.url_command(format!("/{}?acl", bucket).as_str());
+            println!("\n{}", "versioning:".yellow().bold());
+            let _ = handler.url_command(format!("/{}?versioning", bucket).as_str());
+            match s3_type.as_str() {
+                "ceph" => {
+                    println!("\n{}", "version:".yellow().bold());
+                    let _ = handler.url_command(format!("/{}?version", bucket).as_str());
+                    println!("\n{}", "uploads:".yellow().bold());
+                    let _ = handler.url_command(format!("/{}?uploads", bucket).as_str());
+                },
+                "aws" | _ => {}
+            }
         } else if command.starts_with("s3_type"){
             handler.change_s3_type(&command);
         } else if command.starts_with("auth_type"){
@@ -275,6 +304,7 @@ fn main() {
             chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
             handler = s3handler::Handler::init_from_config(&config_list[chosen_int]);
             login_user = config_list[chosen_int].user.clone().unwrap_or(" ".to_string());
+            s3_type = config_list[chosen_int].s3_type.clone().unwrap_or("aws".to_string());
         } else if command.starts_with("log"){ 
             change_log_type(&command);
         } else if command.starts_with("exit") || command.starts_with("quit") {
@@ -357,8 +387,12 @@ USAGE:
     {34} / {35}
         logout and reselect account
 
-    {37} s3://{2}
-        show the usage of the bucket (ceph only)
+    {37} s3://{2} 
+        show the usage of the bucket (ceph admin only)
+
+    {38} s3://{2} / {38} {2}
+        show the bucket information
+        acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph)
 
     If you have any issue, please submit to here https://github.com/yanganto/s3rs/issues 
         "#, 
@@ -369,7 +403,7 @@ USAGE:
             "aws".blue(), "ceph".blue(), "auth_type".bold(), "aws2".blue(), "aws4".blue(),
             "format".bold(), "xml".blue(), "json".blue(), "exit".bold(), "tag".bold(),
             "<key>".cyan(), "<value>".cyan(), "trace".blue(), "add".bold(), "logout".bold(), 
-            "Ctrl + D".bold(), "list".bold(), "usage".bold()//37
+            "Ctrl + d".bold(), "list".bold(), "usage".bold(), "info".bold()//38
             ); 
         } else {
             println!("command {} not found, help for usage or exit for quit", command);
