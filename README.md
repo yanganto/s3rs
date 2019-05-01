@@ -15,8 +15,7 @@ current status:
 
 | COMMAND                                                              | FUNCTION                                   | CEPH | AWS |
 |----------------------------------------------------------------------|--------------------------------------------|------|-----|
-| la                                                                   | list all objects                           | O    | O   |
-| ls                                                                   | list buckets                               | O    | O   |
+| ls                                                                   | list all buckets                           | O    | O   |
 | ls _bucket_                                                          | list objects in the bucket                 | O    | O   |
 | ls s3://_bucket_                                                     | list objects in the bucket                 | O    | O   |
 | mb _bucket_                                                          | create bucket                              | O    | O   |
@@ -38,6 +37,7 @@ current status:
 
 | HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
 |--------------------|------------------------------------------------------------------------------------------|------|-----|
+| la                 | list all objects                                                                         | O    | O   |
 | info s3://_bucket_ | acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph) | O    | O   |
 
 | CEPH OPS API (use system keys) | CEPH ONLY FUNCTION                                  | 
@@ -45,7 +45,7 @@ current status:
 | usage s3://_bucket_            | show the bucket usage  |
 
 
-| SHELL SETTING                 | FUNCTION                                 |
+| SHELL SETTING COMMAND         | FUNCTION                                 |
 |-------------------------------|------------------------------------------|
 | s3\_type [ceph/aws/aws4/aws2] | change the api for different S3 providor |
 | log [trace/debug/info/erro]   | change the log level                     |
