@@ -63,7 +63,7 @@ current status:
 
 # Install 
 Install rust tools rustup and cargo 
-- `curl https://sh.rustup.rs -sSf | sh`
+- `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
 Additional package for ubuntu
 - `apt-get install libssl-dev`
