@@ -66,7 +66,7 @@ Install rust tools rustup and cargo
 - `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
 Additional package for ubuntu
-- `apt-get install libssl-dev`
+- `apt-get install libssl-dev pkg-config openssl`
 
 It is easy to install s3rs via cargo as following command.
 - `cargo install s3rs`
