@@ -26,7 +26,7 @@ current status:
 | get s3://_bucket_/_object_ _file_                                    | download object                            | O    | O   |
 | get s3://_bucket_/_object_                                           | download object in current folder          | O    | O   |
 | cat s3://_bucket_/_object_                                           | show the object content                    | O    | O   |
-| del s3://_bucket_/_object_                                           | delete the object                          | O    | O   |
+| del s3://_bucket_/_object_ [header:value]                            | delete the object (with flag)              | O    | O   |
 | tag list s3://_bucket_/_object_                                      | list tag(s) to the object                  | O    | O   |
 | tag ls s3://_bucket_/_object_                                        | list tag(s) to the object                  | O    | O   |
 | tag add s3://_bucket_/_object_ _key1_=_value1_ [_key2_=_value2_] ... | add tag(s) to the object                   | O    | O   |
