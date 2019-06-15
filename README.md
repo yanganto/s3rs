@@ -13,27 +13,29 @@ an **S3** **R**ich **S**upport client
 
 current status:  
 
-| COMMAND                                                              | FUNCTION                                   | CEPH | AWS |
-|----------------------------------------------------------------------|--------------------------------------------|------|-----|
-| ls                                                                   | list all buckets                           | O    | O   |
-| ls _bucket_                                                          | list objects in the bucket                 | O    | O   |
-| ls s3://_bucket_                                                     | list objects in the bucket                 | O    | O   |
-| mb _bucket_                                                          | create bucket                              | O    | O   |
-| rb _bucket_                                                          | delete bucket                              | O    | O   |
-| put <file> s3://_bucket_/_object_                                    | upload the file                            | O    | O   |
-| put <file> s3://_bucket_                                             | upload the file (file name as object name) | O    | O   |
-| put test s3://_bucket_/_object_                                      | upload a test file sepcific object name    | O    | O   |
-| get s3://_bucket_/_object_ _file_                                    | download object                            | O    | O   |
-| get s3://_bucket_/_object_                                           | download object in current folder          | O    | O   |
-| cat s3://_bucket_/_object_                                           | show the object content                    | O    | O   |
-| del s3://_bucket_/_object_ [header:value]                            | delete the object (with flag)              | O    | O   |
-| tag list s3://_bucket_/_object_                                      | list tag(s) to the object                  | O    | O   |
-| tag ls s3://_bucket_/_object_                                        | list tag(s) to the object                  | O    | O   |
-| tag add s3://_bucket_/_object_ _key1_=_value1_ [_key2_=_value2_] ... | add tag(s) to the object                   | O    | O   |
-| tag put s3://_bucket_/_object_ _key1_=_value1_ [_key2_=_value2_] ... | add tag(s) to the object                   | O    | O   |
-| tag del s3://_bucket_/_object_                                       | remove tag(s) from the object              | O    | O   |
-| tag rm s3://_bucket_/_object_                                        | remove tag(s) from the object              | O    | O   |
-| /uri?query                                                           | give the orignal url                       | O    | O   |
+| COMMAND                                                              | FUNCTION                                       | CEPH | AWS |
+|----------------------------------------------------------------------|------------------------------------------------|------|-----|
+| ls                                                                   | list all buckets                               | O    | O   |
+| ls _bucket_                                                          | list objects in the bucket                     | O    | O   |
+| ls s3://_bucket_                                                     | list objects in the bucket                     | O    | O   |
+| mb _bucket_                                                          | create bucket                                  | O    | O   |
+| rb _bucket_                                                          | delete bucket                                  | O    | O   |
+| put <file> s3://_bucket_/_object_                                    | upload the file                                | O    | O   |
+| put <file> s3://_bucket_                                             | upload the file (file name as object name)     | O    | O   |
+| put test s3://_bucket_/_object_                                      | upload a test file sepcific object name        | O    | O   |
+| get s3://_bucket_/_object_ _file_                                    | download object                                | O    | O   |
+| get s3://_bucket_/_object_                                           | download object in current folder              | O    | O   |
+| cat s3://_bucket_/_object_                                           | show the object content                        | O    | O   |
+| del s3://_bucket_/_object_ [delete-marker:true] [secure-delete:true] | delete the object (with flag)                  | O    | O   |
+|                                                                      | delete-marker used in AWS                      |      |     |
+|                                                                      | secure-delete used in BIGTERA(customized CEPH) |      |     |
+| tag list s3://_bucket_/_object_                                      | list tag(s) to the object                      | O    | O   |
+| tag ls s3://_bucket_/_object_                                        | list tag(s) to the object                      | O    | O   |
+| tag add s3://_bucket_/_object_ _key1_=_value1_ [_key2_=_value2_] ... | add tag(s) to the object                       | O    | O   |
+| tag put s3://_bucket_/_object_ _key1_=_value1_ [_key2_=_value2_] ... | add tag(s) to the object                       | O    | O   |
+| tag del s3://_bucket_/_object_                                       | remove tag(s) from the object                  | O    | O   |
+| tag rm s3://_bucket_/_object_                                        | remove tag(s) from the object                  | O    | O   |
+| /uri?query                                                           | give the orignal url                           | O    | O   |
 
 | HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
 |--------------------|------------------------------------------------------------------------------------------|------|-----|

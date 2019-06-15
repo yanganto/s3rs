@@ -403,7 +403,7 @@ USAGE:
     {9} s3://{2}/{7} 
         display the object content
 
-    {10} s3://{2}/{7} 
+    {10} s3://{2}/{7} [delete-marker:true] [secure-delete:true]
         delete the object
 
     {29} {1}/{36} s3://{2}/{7}
