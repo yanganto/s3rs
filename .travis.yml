@@ -29,6 +29,12 @@ jobs:
       script: cargo test --verbose --all
     - stage: "Build"
       script: cargo build --verbose --all
-    - stage: "Static Build"
+    - stage: "releases"
       script: cargo build --verbose --all --target x86_64-unknown-linux-musl
 
+deploy:
+  provider: releases
+  api_key: "$GH_TOKEN"
+  file: "target/x86_64-unknown-linux-musl/release/s3rs"
+  skip_cleanup: true
+  draft: true
