@@ -6,19 +6,12 @@ rust:
 - stable
 services:
 - docker
-before_deploy: 
-  script:
-    - cargo build --verbose --all --target x86_64-unknown-linux-musl --release
-    - git config --local user.name "yanganto"
-    - git config --local user.email "yanganto@gmail.com"
-    - export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
-    - git tag $TRAVIS_TAG
-    - ./build-release s3rs ${TRAVIS_TAG}-linux
+before_deploy: "./build-release s3rs ${TRAVIS_TAG}-${TRAVIS_OS_NAME}"
 deploy:
   provider: releases
   api_key: $GH_TOKEN
   file_glob: true
-  file: "s3rs-${TRAVIS_TAG}-linux.*"
+  file: "s3rs-${TRAVIS_TAG}-${TRAVIS_OS_NAME}.*"
   skip_cleanup: true
   on:
     rust: stable
