@@ -4,7 +4,7 @@ s3rs
 
 an **S3** **R**ich **S**upport client
 - rust edition 2018
-- multi config
+- multi config (please put config files under `~/.config/s3rs`)
 - interactive command line tool
 - easy to debug with http protocol
 - AWS4, AWS2 support
