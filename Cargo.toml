@@ -13,7 +13,7 @@ edition = "2018"
 [dependencies]
 dirs = "2.0"
 openssl = { version = "0.10", features = ["vendored"] }
-openssl-sys = { version = "*",  features = ["vendored"] }
+openssl-sys = { version = "0.9",  features = ["vendored"] }
 interactor = "0.1"
 toml = "0.4"
 serde = "1.0"
