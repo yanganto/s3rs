@@ -1,4 +1,8 @@
 language: rust
+
+compile:
+- cargo build --verbose --all
+
 sudo: required
 os:
 - linux
