@@ -63,7 +63,11 @@ current status:
 | ceph    | aws4      | json   | path-style           |
 | aws     | aws4      | xml    | virtual-hosted–style |
 
-# Install 
+# Download excutable binary
+Download the link as follow and unzip
+- https://github.com/yanganto/s3rs/releases/download/v0.2.4/s3rs-v0.2.4-linux.zip
+
+# Install via Crate.io
 Install rust tools rustup and cargo 
 - `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 

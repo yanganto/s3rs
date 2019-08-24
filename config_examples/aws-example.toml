@@ -1,0 +1,7 @@
+[[credential]]
+s3_type = "aws"
+host = "s3.us-east-2.amazonaws.com"
+user = "aws-user"
+access_key = "AKIAII3AML3XMTB4MTKQ"
+secret_key = "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"
+region = "us-east-2"

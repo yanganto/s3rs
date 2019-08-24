@@ -1,0 +1,6 @@
+[[credential]]
+s3_type = "ceph"
+host = "10.1.12.243"
+user = "admin"
+access_key = "L2D11MY86GEVA6I4DX2S"
+secret_key = "MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg"
