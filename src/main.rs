@@ -24,15 +24,15 @@ extern crate s3handler;
 extern crate serde_json;
 
 use colored::*;
+use dirs::home_dir;
 use log::{Level, LevelFilter, Metadata, Record};
 use regex::Regex;
-use std::fs::{File, OpenOptions, read_dir, create_dir};
+use std::fs::{create_dir, read_dir, File, OpenOptions};
 use std::io;
 use std::io::stdout;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::str;
 use std::str::FromStr;
-use dirs::home_dir;
 
 static MY_LOGGER: MyLogger = MyLogger;
 static S3_FORMAT: &'static str =
@@ -124,7 +124,7 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
 fn main() {
     log::set_logger(&MY_LOGGER).unwrap();
     log::set_max_level(LevelFilter::Error);
-    
+
     let s3rs_config_foler = home_dir().unwrap().join(".config/s3rs");
     let legacy_s3rs_config = home_dir().unwrap().join(".s3rs.toml");
     let mut config_contents = String::new();
@@ -132,26 +132,36 @@ fn main() {
         for entry in read_dir(s3rs_config_foler).unwrap() {
             let path = entry.unwrap().path();
             if !path.is_dir() {
-                let mut f = File::open(path).expect("cannot open file"); 
-                f.read_to_string(&mut config_contents).expect("cannot read file");
+                let mut f = File::open(path).expect("cannot open file");
+                f.read_to_string(&mut config_contents)
+                    .expect("cannot read file");
             }
         }
     } else if legacy_s3rs_config.exists() {
         println!("{}", "legacy s3rs config file detected, you may split it into different config files, and put them under ~/.config/s3rs".bold());
-        let mut f = File::open(legacy_s3rs_config).expect("Can not open legacy 3rs config file"); 
-        f.read_to_string(&mut config_contents).expect("legacy s3rs config is not readable");
+        let mut f = File::open(legacy_s3rs_config).expect("Can not open legacy 3rs config file");
+        f.read_to_string(&mut config_contents)
+            .expect("legacy s3rs config is not readable");
     } else {
         create_dir(s3rs_config_foler.clone()).expect("create config folder fail");
-        let mut f = File::create(s3rs_config_foler.join("example.toml")).expect("Can not write s3rs config example file");
-        let _ = f.write_all(
-            b"[[credential]]\ns3_type = \"aws\"\nhost = \"s3.us-east-1.amazonaws.com\"\nuser = \"admin\"\naccess_key = \"L2D11MY86GEVA6I4DX2S\"\nsecret_key = \"MBCqT90XMUaBcWd1mcUjPPLdFuNZndiBk0amnVVg\"\nregion = \"us-east-1\""
-            );
-        println!("{}", "An example file is created in ~/.config/s3rs/example.toml, you can put multiple toml files under ~/.config/s3rs".bold());
+        let mut f = File::create(s3rs_config_foler.join("aws-example.toml"))
+            .expect("Can not write s3rs config example file");
+        let _ = f.write_all(include_str!("../config_examples/aws-example.toml").as_bytes());
+        let mut f = File::create(s3rs_config_foler.join("ceph-example.toml"))
+            .expect("Can not write s3rs config example file");
+        let _ = f.write_all(include_str!("../config_examples/ceph-example.toml").as_bytes());
+        println!(
+            "Example files is created in {}, multiple toml files can put under this folder",
+            "~/.config/s3rs".bold()
+        );
         return;
     }
 
     if config_contents == "" {
-        println!("{}", "Lack of config files please put in ~/.config/s3rs".bold());
+        println!(
+            "{}",
+            "Lack of config files please put in ~/.config/s3rs".bold()
+        );
         return;
     }
 
@@ -170,7 +180,11 @@ fn main() {
         .clone()
         .unwrap_or("aws".to_string());
 
-    println!("enter command, type {} for usage or type {} for quit", "help".bold(), "exit".bold());
+    println!(
+        "enter command, type {} for usage or type {} for quit",
+        "help".bold(),
+        "exit".bold()
+    );
 
     // let mut raw_input;
     let mut command = String::new();
