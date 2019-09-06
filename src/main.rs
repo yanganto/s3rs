@@ -235,7 +235,15 @@ fn main() {
         if command.starts_with("la") {
             print_if_error(handler.la());
         } else if command.starts_with("ls") {
-            print_if_error(handler.ls(command.split_whitespace().nth(1)));
+            match handler.ls(command.split_whitespace().nth(1)) {
+                Err(e) => println!("{}", e),
+                Ok(v) => {
+                    for o in v {
+                        println!("{:?}", o);
+                        println!("{}", String::from(o));
+                    }
+                }
+            };
         } else if command.starts_with("put") {
             match handler.put(
                 command.split_whitespace().nth(1).unwrap_or(""),
