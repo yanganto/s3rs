@@ -87,10 +87,10 @@ fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T) -> io::Result<T>
 where
     T: FromStr + Ord,
 {
-    tty.write_all(prompt.as_bytes());
+    let _ = tty.write_all(prompt.as_bytes());
     let mut reader = io::BufReader::new(tty);
     let mut result = String::new();
-    reader.read_line(&mut result);
+    let _ = reader.read_line(&mut result);
     match result.replace("\n", "").parse::<T>() {
         Ok(x) => {
             if x >= min && x <= max {
@@ -218,7 +218,7 @@ fn main() {
         command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
             Ok(mut tty) => {
                 tty.flush().expect("Could not open tty");
-                tty.write_all(
+                let _ = tty.write_all(
                     format!("{} {} {} ", "s3rs".green(), login_user.cyan(), ">".green()).as_bytes(),
                 );
                 let reader = BufReader::new(&tty);
@@ -233,9 +233,46 @@ fn main() {
 
         debug!("===== do command: {} =====", command);
         if command.starts_with("la") {
-            print_if_error(handler.la());
+            match handler.la() {
+                Err(e) => println!("{}", e),
+                Ok(v) => {
+                    for o in v {
+                        debug!("{:?}", o);
+                        println!("{}", String::from(o));
+                    }
+                }
+            };
         } else if command.starts_with("ls") {
-            print_if_error(handler.ls(command.split_whitespace().nth(1)));
+            match handler.ls(command.split_whitespace().nth(1)) {
+                Err(e) => println!("{}", e),
+                Ok(v) => {
+                    for o in v {
+                        debug!("{:?}", o);
+                        println!("{}", String::from(o));
+                    }
+                }
+            };
+        } else if command.starts_with("ll") {
+            let r = match command.split_whitespace().nth(1) {
+                Some(b) => handler.ls(Some(b)),
+                None => handler.la(),
+            };
+            match r {
+                Err(e) => println!("{}", e),
+                Ok(v) => {
+                    println!("STORAGE CLASS\tMODIFIED TIME\t\t\tETAG\t\t\t\t\tKEY",);
+                    for o in v {
+                        debug!("{:?}", o);
+                        println!(
+                            "{}\t{}\t{}\t{}",
+                            o.storage_class.clone().unwrap(),
+                            o.mtime.clone().unwrap(),
+                            o.etag.clone().unwrap(),
+                            String::from(o)
+                        );
+                    }
+                }
+            };
         } else if command.starts_with("put") {
             match handler.put(
                 command.split_whitespace().nth(1).unwrap_or(""),
@@ -406,6 +443,12 @@ USAGE:
     {1} {2}
         list all objects of the bucket
 
+    {39}
+        list all object detail
+
+    {39} {2}
+        list all objects detail of the bucket
+
     {3} {2}
         create bucket
 
@@ -518,7 +561,8 @@ USAGE:
                 "Ctrl + d".bold(),
                 "list".bold(),
                 "usage".bold(),
-                "info".bold() //38
+                "info".bold(),
+                "ll".bold() //39
             );
         } else {
             println!(

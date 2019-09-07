@@ -18,6 +18,7 @@ current status:
 | ls                                                                   | list all buckets                               | O    | O   |
 | ls _bucket_                                                          | list objects in the bucket                     | O    | O   |
 | ls s3://_bucket_                                                     | list objects in the bucket                     | O    | O   |
+| ll s3://_bucket_                                                     | list objects detail in the bucket              | O    | O   |
 | mb _bucket_                                                          | create bucket                                  | O    | O   |
 | rb _bucket_                                                          | delete bucket                                  | O    | O   |
 | put <file> s3://_bucket_/_object_                                    | upload the file                                | O    | O   |
@@ -40,6 +41,7 @@ current status:
 | HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
 |--------------------|------------------------------------------------------------------------------------------|------|-----|
 | la                 | list all objects                                                                         | O    | O   |
+| ll                 | list all objects details                                                                       | O    | O   |
 | info s3://_bucket_ | acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph) | O    | O   |
 
 | CEPH OPS API (use system keys) | CEPH ONLY FUNCTION                                  | 
@@ -65,7 +67,7 @@ current status:
 
 # Download excutable binary
 Download the link as follow and unzip
-- https://github.com/yanganto/s3rs/releases/download/v0.2.4/s3rs-v0.2.4-linux.zip
+- https://github.com/yanganto/s3rs/releases/download/v0.2.6/s3rs-v0.2.6-linux.zip
 
 # Install via Crate.io
 Install rust tools rustup and cargo 
