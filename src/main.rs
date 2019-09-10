@@ -265,9 +265,13 @@ fn main() {
                         debug!("{:?}", o);
                         println!(
                             "{}\t{}\t{}\t{}",
-                            o.storage_class.clone().unwrap(),
-                            o.mtime.clone().unwrap(),
-                            o.etag.clone().unwrap(),
+                            o.storage_class.clone().unwrap_or("        ".to_string()),
+                            o.mtime
+                                .clone()
+                                .unwrap_or("                        ".to_string()),
+                            o.etag
+                                .clone()
+                                .unwrap_or("                                 ".to_string()),
                             String::from(o)
                         );
                     }

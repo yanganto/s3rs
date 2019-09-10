@@ -35,7 +35,7 @@ serde_json = "1.0"
 regex = "0.2"
 quick-xml = "0.12"
 colored = "1.6"
-s3handler = "0.3.0"
+s3handler = "0.3.1"
 
 # Patch for s3handler
 # [patch.crates-io]
