@@ -41,7 +41,7 @@ current status:
 | HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
 |--------------------|------------------------------------------------------------------------------------------|------|-----|
 | la                 | list all objects                                                                         | O    | O   |
-| ll                 | list all objects details                                                                       | O    | O   |
+| ll                 | list all objects details (storage class, modify time, etag)                              | O    | O   |
 | info s3://_bucket_ | acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph) | O    | O   |
 
 | CEPH OPS API (use system keys) | CEPH ONLY FUNCTION                                  | 
