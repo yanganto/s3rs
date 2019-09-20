@@ -16,9 +16,6 @@ current status:
 | COMMAND                                                              | FUNCTION                                       | CEPH | AWS |
 |----------------------------------------------------------------------|------------------------------------------------|------|-----|
 | ls                                                                   | list all buckets                               | O    | O   |
-| ls _bucket_                                                          | list objects in the bucket                     | O    | O   |
-| ls s3://_bucket_                                                     | list objects in the bucket                     | O    | O   |
-| ll s3://_bucket_                                                     | list objects detail in the bucket              | O    | O   |
 | mb _bucket_                                                          | create bucket                                  | O    | O   |
 | rb _bucket_                                                          | delete bucket                                  | O    | O   |
 | put <file> s3://_bucket_/_object_                                    | upload the file                                | O    | O   |
@@ -38,15 +35,20 @@ current status:
 | tag rm s3://_bucket_/_object_                                        | remove tag(s) from the object                  | O    | O   |
 | /uri?query                                                           | give the orignal url                           | O    | O   |
 
-| HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
-|--------------------|------------------------------------------------------------------------------------------|------|-----|
-| la                 | list all objects                                                                         | O    | O   |
-| ll                 | list all objects details (storage class, modify time, etag)                              | O    | O   |
-| info s3://_bucket_ | acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph) | O    | O   |
+| HIGH LEVEL COMMAND        | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
+|---------------------------|------------------------------------------------------------------------------------------|------|-----|
+| la                        | list all objects                                                                         | O    | O   |
+| ls _bucket_               | list objects in the bucket                                                               | O    | O   |
+| ls s3://_bucket_          | list objects in the bucket                                                               | O    | O   |
+| ls s3://_bucket_/_prefix_ | list objects match prefix in the bucket                                                  | O    | O   |
+| ll                        | list all objects details (storage class, modify time, etag)                              | O    | O   |
+| ll s3://_bucket_          | list objects detail in the bucket                                                        | O    | O   |
+| ll s3://_bucket_/_prefix_ | list objects match prefix detail in the bucket                                           | O    | O   |
+| info s3://_bucket_        | acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph) | O    | O   |
 
-| CEPH OPS API (use system keys) | CEPH ONLY FUNCTION                                  | 
-|--------------------------------|-----------------------------------|
-| usage s3://_bucket_            | show the bucket usage  |
+| CEPH OPS API (use system keys) | CEPH ONLY FUNCTION    |
+|--------------------------------|-----------------------|
+| usage s3://_bucket_            | show the bucket usage |
 
 
 | SHELL SETTING COMMAND         | FUNCTION                                 |
