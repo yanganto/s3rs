@@ -10,6 +10,7 @@ an **S3** **R**ich **S**upport client
 - AWS4, AWS2 support
 - support http redirect for multi region of AWS S3
 - support automatically multipart upload
+- support filters [v0.2.8](https://www.ant-lab.tw/2019-09-21/)
 
 current status:  
 
