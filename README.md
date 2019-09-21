@@ -12,7 +12,11 @@ an **S3** **R**ich **S**upport client
 - support automatically multipart upload
 - support filters [v0.2.8](https://www.ant-lab.tw/2019-09-21/)
 
-current status:  
+# Download excutable binary
+Download the link as follow and unzip
+- https://github.com/yanganto/s3rs/releases/download/v0.2.8/s3rs-v0.2.8-linux.zip
+
+# Command List
 
 | COMMAND                                                              | FUNCTION                                       | CEPH | AWS |
 |----------------------------------------------------------------------|------------------------------------------------|------|-----|
@@ -67,10 +71,6 @@ current status:
 |---------|-----------|--------|----------------------|
 | ceph    | aws4      | json   | path-style           |
 | aws     | aws4      | xml    | virtual-hosted–style |
-
-# Download excutable binary
-Download the link as follow and unzip
-- https://github.com/yanganto/s3rs/releases/download/v0.2.6/s3rs-v0.2.6-linux.zip
 
 # Install via Crate.io
 Install rust tools rustup and cargo 
