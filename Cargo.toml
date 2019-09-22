@@ -1,9 +1,9 @@
 [package]
 name = "s3rs"
-version = "0.2.8"
+version = "0.2.9"
 authors = ["Antonio Yang <yanganto@gmail.com>"]
 description = "A s3 cli client with multi configs with diffent provider"
-keywords = ["S3", "Amazon", "ceph", "AWS"]
+keywords = ["S3", "Amazon", "CEPH", "AWS"]
 categories = ["command-line-interface"]
 license = "MIT"
 readme = "README.md"
@@ -35,9 +35,4 @@ serde_json = "1.0"
 regex = "0.2"
 quick-xml = "0.12"
 colored = "1.6"
-s3handler = "0.3.2"
-
-# Patch for s3handler
-# [patch.crates-io]
-# s3handler = { path = "../s3handler" }
-# s3handler = { git = "https://github.com/yanganto/s3handler", branch = "master" }
+s3handler = "0.3.3"

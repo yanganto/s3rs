@@ -444,19 +444,25 @@ USAGE:
     {1}
         list all buckets
 
-    {1} {2}
+    {1} s3://{2}
         list all objects of the bucket
+
+    {1} s3://{2}/{40}
+        list objects with prefix in the bucket
 
     {39}
         list all object detail
 
-    {39} {2}
+    {39} s3://{2}
         list all objects detail of the bucket
 
-    {3} {2}
+    {39} s3://{2}/{40}
+        list detail of the objects with prefix in the bucket
+
+    {3} s3://{2}
         create bucket
 
-    {4} {2}
+    {4} s3://{2}
         delete bucket
 
     {5} {6} s3://{2}/{7}
@@ -566,7 +572,8 @@ USAGE:
                 "list".bold(),
                 "usage".bold(),
                 "info".bold(),
-                "ll".bold() //39
+                "ll".bold(),
+                "<prefix>".cyan(), //40
             );
         } else {
             println!(
