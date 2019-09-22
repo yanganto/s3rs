@@ -1,5 +1,6 @@
-s3rs 
+S3RS
 ---
+
 [![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
 
 an **S3** **R**ich **S**upport client
@@ -11,13 +12,13 @@ an **S3** **R**ich **S**upport client
 - support http redirect for multi region of AWS S3
 - support automatically multipart upload
 - support filters [v0.2.8](https://www.ant-lab.tw/2019-09-21/)
-- support format without protocol
+- support format without protocol [v0.2.9](https://www.ant-lab.tw/2019-09-22/)
 
-# Download excutable binary
+### Download excutable binary
 Download the link as follow and unzip
 - https://github.com/yanganto/s3rs/releases/download/v0.2.9/s3rs-v0.2.9-linux.zip
 
-# Command List
+### Command List
 
 #### Table 1: List commands will send single http request
 | COMMAND                                                              | FUNCTION                                                    | CEPH | AWS |
@@ -78,7 +79,7 @@ Download the link as follow and unzip
 | ceph    | aws4      | json   | path-style           |
 | aws     | aws4      | xml    | virtual-hosted–style |
 
-# Install via Crate.io
+### Install via Crate.io
 Install rust tools rustup and cargo 
 - `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
@@ -98,7 +99,7 @@ edit the config file at ~/.s3rs.toml
 - `vi ~/.s3rs.toml`
 
 
-# Develop
+### Develop
 Install rust tools rustup and cargo 
 - `curl https://sh.rustup.rs -sSf | sh`
 - `git clone https://github.com/yanganto/s3rs.git`
@@ -106,8 +107,10 @@ Install rust tools rustup and cargo
 - `cargo build`
 - The excutable binary will in `./target/debug/s3rs`
 
-# Demo
+### Demo
 - A short demo [video](https://youtu.be/MtPYhJnbMfs)
+- v0.2.8 update [video](https://www.youtube.com/watch?v=59ijqbGxK6U)
+- v0.2.9 update [video](https://www.youtube.com/watch?v=_HVj7_dJEkE)
 - snapshot
 [![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example.png)](https://youtu.be/MtPYhJnbMfs)
 [![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example2.png)](https://youtu.be/MtPYhJnbMfs)
