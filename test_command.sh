@@ -5,7 +5,9 @@
 set item [lindex $argv 0]
 set bucket [lindex $argv 1]
 set prompt "s3rs.*>";
+set timeout 120
 
+spawn dd if=/dev/zero bs=1024 count=7000 of=/tmp/7M
 spawn cargo run
 
 expect "Selection:"
@@ -63,7 +65,16 @@ expect "Selection:"
 send $item\r
 
 expect -re $prompt
-send "exit\n"
+send "put /tmp/7M s3://$bucket\r"
+
+expect -re $prompt
+send "get s3://$bucket/7M /tmp/7\r"
+
+expect -re $prompt
+send "exit\r"
+
+expect "cya~"
+spawn md5sum /tmp/7M /tmp/7
 
 interact
 
