@@ -2,78 +2,66 @@
 
 # usage ./test_command.sh <number_of_your_profile> <bucket_name>
 
-set item [lindex $argv 0]
+set config [lindex $argv 0]
 set bucket [lindex $argv 1]
-set prompt "s3rs.*>";
+set prompt ")>";  # this my shell prompt, change to yours if you use this script
 set timeout 120
 
 spawn dd if=/dev/zero bs=1024 count=7000 of=/tmp/7M
-spawn cargo run
+spawn cargo build
 
-expect "Selection:"
-send $item\r
+expect $prompt
+spawn target/debug/s3rs --config=$config ls
 
-expect -re $prompt
-send ls\r
+expect $prompt
+spawn target/debug/s3rs --config=$config put test s3://$bucket
 
-expect -re $prompt
-send "put test s3://$bucket\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config ls s3://$bucket
 
-expect -re $prompt
-send "ls s3://$bucket\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config ls /$bucket
 
-expect -re $prompt
-send "ls /$bucket\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config ls $bucket
 
-expect -re $prompt
-send "ls $bucket\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config la
 
-expect -re $prompt
-send "la\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config ll s3://$bucket/te
 
-expect -re $prompt
-send "ll s3://$bucket/te\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config cat s3://$bucket/test
 
-expect -re $prompt
-send "cat s3://$bucket/test\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config tag add s3://$bucket/test a=1 b=2
 
-expect -re $prompt
-send "tag add s3://$bucket/test a=1 b=2\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config  tag ls s3://$bucket/test
 
-expect -re $prompt
-send "tag ls s3://$bucket/test\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config tag del s3://$bucket/test
 
-expect -re $prompt
-send "tag del s3://$bucket/test\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config tag list s3://$bucket/test
 
-expect -re $prompt
-send "tag list s3://$bucket/test\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config rm s3://$bucket/test
 
-expect -re $prompt
-send "rm s3://$bucket/test\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config ll $bucket
 
-expect -re $prompt
-send "ll $bucket\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config info $bucket
 
-expect -re $prompt
-send "info $bucket\r"
+expect $prompt
+spawn target/debug/s3rs --config=$config put /tmp/7M s3://$bucket
 
-expect -re $prompt
-send "logout\n"
+expect $prompt
+spawn target/debug/s3rs --config=$config get s3://$bucket/7M /tmp/7
 
-expect "Selection:"
-send $item\r
-
-expect -re $prompt
-send "put /tmp/7M s3://$bucket\r"
-
-expect -re $prompt
-send "get s3://$bucket/7M /tmp/7\r"
-
-expect -re $prompt
-send "exit\r"
-
-expect "cya~"
+expect $prompt
 spawn md5sum /tmp/7M /tmp/7
 
 interact
