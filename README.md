@@ -13,7 +13,7 @@ an **S3** **R**ich **S**upport client
 - support automatically multipart upload
 - support filters [v0.2.8](https://www.ant-lab.tw/2019-09-21/)
 - support format without protocol [v0.2.9](https://www.ant-lab.tw/2019-09-22/)
-- support cli mode
+- support command-line interface mode [v0.3.0](https://www.ant-lab.tw/2019-09-28/)
 
 ### Download excutable binary
 Download the link as follow and unzip
@@ -122,6 +122,7 @@ Install rust tools rustup and cargo
 - A short demo [video](https://youtu.be/MtPYhJnbMfs)
 - v0.2.8 update [video](https://www.youtube.com/watch?v=59ijqbGxK6U)
 - v0.2.9 update [video](https://www.youtube.com/watch?v=_HVj7_dJEkE)
+- v0.3.0 update [video](https://www.youtube.com/watch?v=PNFoOJ1MuAw)
 - snapshot
 [![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example.png)](https://youtu.be/MtPYhJnbMfs)
 [![snapshot](https://raw.githubusercontent.com/yanganto/s3rs/master/example2.png)](https://youtu.be/MtPYhJnbMfs)
