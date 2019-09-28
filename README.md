@@ -13,10 +13,21 @@ an **S3** **R**ich **S**upport client
 - support automatically multipart upload
 - support filters [v0.2.8](https://www.ant-lab.tw/2019-09-21/)
 - support format without protocol [v0.2.9](https://www.ant-lab.tw/2019-09-22/)
+- support cli mode
 
 ### Download excutable binary
 Download the link as follow and unzip
-- https://github.com/yanganto/s3rs/releases/download/v0.2.10/s3rs-v0.2.10-linux.zip
+- https://github.com/yanganto/s3rs/releases/download/v0.3.0/s3rs-v0.3.0-linux.zip
+
+### How to use
+#### shell mode
+- excute `s3rs` will into shell mode, and excute `help`, you can see the commands you can use
+#### command mode
+- use config file with full path
+  - `s3rs --config=/your/s3s/config/file ls`
+
+- use config file `example.toml` in `~/.config/s3rs` with file name without extension
+  - `s3rs --config=example ls`
 
 ### Command List
 
