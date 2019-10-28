@@ -3,6 +3,8 @@ S3RS
 
 [![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
 
+The slides introducing S3RS in COSCon'19 at Shanghai [Slides](https://slides.com/po-anyang/s3rs-coscon19#/)
+
 an **S3** **R**ich **S**upport client
 - rust edition 2018
 - multi config (please put config files under `~/.config/s3rs`)
