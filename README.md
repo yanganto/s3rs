@@ -49,9 +49,8 @@ Download the link as follow and unzip
 | get s3://_bucket_/_object_ _file_                                    | download object                                             | O    | O   |
 | get s3://_bucket_/_object_                                           | download object in current folder                           | O    | O   |
 | cat s3://_bucket_/_object_                                           | show the object content                                     | O    | O   |
-| del s3://_bucket_/_object_ [delete-marker:true] [secure-delete:true] | delete the object (with flag)                               | O    | O   |
+| del s3://_bucket_/_object_ [delete-marker:true]                      | delete the object (with flag)                               | O    | O   |
 |                                                                      | delete-marker used in AWS                                   |      | O   |
-|                                                                      | secure-delete used in BIGTERA(customized CEPH)              |      |     |
 | tag list s3://_bucket_/_object_                                      | list tag(s) to the object                                   | O    | O   |
 | tag ls s3://_bucket_/_object_                                        | list tag(s) to the object                                   | O    | O   |
 | tag add s3://_bucket_/_object_ _key1_=_value1_ [_key2_=_value2_] ... | add tag(s) to the object                                    | O    | O   |

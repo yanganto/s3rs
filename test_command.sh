@@ -1,6 +1,6 @@
 #!/usr/bin/expect -f
 
-# usage ./test_command.sh <number_of_your_profile> <bucket_name>
+# usage ./test_command.sh <path_of_your_profile> <bucket_name>
 
 set config [lindex $argv 0]
 set bucket [lindex $argv 1]

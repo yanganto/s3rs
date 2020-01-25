@@ -215,7 +215,7 @@ fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut 
         };
     } else if command.starts_with("cat") {
         print_if_error(handler.cat(command.split_whitespace().nth(1).unwrap_or("")));
-    } else if command.starts_with("del") {
+    } else if command.starts_with("del") || command.starts_with("rm") {
         let mut iter = command.split_whitespace();
         let target = iter.nth(1).unwrap_or("");
         let mut headers = Vec::new();
@@ -233,7 +233,7 @@ fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut 
                 }
             };
         }
-        match handler.del_with_flag(target, &headers) {
+        match handler.del_with_flag(target, &mut headers) {
             Err(e) => println!("{}", e),
             Ok(_) => println!("deletion completed"),
         }
@@ -391,7 +391,7 @@ USAGE:
 {9} s3://{2}/{7}
     display the object content
 
-{10} s3://{2}/{7} [delete-marker:true] [secure-delete:true]
+{10} s3://{2}/{7} [delete-marker:true]
     delete the object
 
 {29} {1}/{36} s3://{2}/{7}
@@ -586,7 +586,7 @@ fn main() {
     };
 
     let config_list = config.credential.unwrap();
-    let mut handler = s3handler::Handler::init_from_config(&config_list[chosen_int]);
+    let mut handler = s3handler::Handler::from(&config_list[chosen_int]);
     let mut login_user = config_list[chosen_int]
         .user
         .clone()
@@ -614,7 +614,7 @@ fn main() {
         if command.starts_with("logout") {
             println!("");
             chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
-            handler = s3handler::Handler::init_from_config(&config_list[chosen_int]);
+            handler = s3handler::Handler::from(&config_list[chosen_int]);
             login_user = config_list[chosen_int]
                 .user
                 .clone()
