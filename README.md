@@ -18,7 +18,7 @@ an **S3** **R**ich **S**upport client
 
 ### Download excutable binary
 Download the link as follow and unzip
-- https://github.com/yanganto/s3rs/releases/download/v0.3.1/s3rs-v0.3.1-linux.zip
+- https://github.com/yanganto/s3rs/releases/download/v0.3.2/s3rs-v0.3.2-linux.zip
 
 ### How to use
 #### shell mode
