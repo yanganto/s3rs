@@ -143,7 +143,7 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
     Ok(idx)
 }
 
-fn print_if_error(result: Result<(), &str>) {
+fn print_if_error(result: Result<(), failure::Error>) {
     match result {
         Err(e) => println!("{}", e),
         Ok(_) => {}
