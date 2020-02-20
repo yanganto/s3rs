@@ -93,7 +93,7 @@ Download the link as follow and unzip
 #### Table 6: The talks about this project
 | Talks      | Link                                                   |
 |------------|--------------------------------------------------------|
-| COSCon'19  | [Slides](https://slides.com/po-anyang/s3rs-coscon19#/) |
+| COSCon'19  | [Slides](https://slides.com/yanganto/s3rs-coscon19#/) |
 
 ### Install via Crate.io
 Install rust tools rustup and cargo 
