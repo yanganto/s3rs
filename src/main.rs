@@ -213,6 +213,27 @@ fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut 
             Err(e) => println!("{}", e),
             Ok(_) => println!("download completed"),
         };
+
+    // It is OK to let it works as POC with something hard coded, because the bounties is not large.
+    // Please take this easy.
+    // Transfer to IPFS can be a POC start from put file in tmp, then transfer
+    // } else if command.starts_with("transfer") {
+
+    // Keep this part comment, and you dont really need a S3 account to download something
+    //     match handler.get(
+    //         command.split_whitespace().nth(1).unwrap_or(""),
+    //         "/tmp",
+    //     ) {
+    //         Err(e) => println!("{}", e),
+    //         Ok(_) => println!("download tmp file completed"),
+    //     };
+    // End of Keep this part comment
+
+    //
+    //     // TODO: transfer file to IPFS
+    //
+    //     // TODO: print the Qm hex or 0x hex for the user
+    //
     } else if command.starts_with("cat") {
         print_if_error(handler.cat(command.split_whitespace().nth(1).unwrap_or("")));
     } else if command.starts_with("del") || command.starts_with("rm") {
