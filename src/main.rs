@@ -36,6 +36,9 @@ use std::io::stdout;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::str;
 use std::str::FromStr;
+use hyper::rt::Future;
+use ipfs_api::IpfsClient;
+use std::io::Cursor;
 
 static MY_LOGGER: MyLogger = MyLogger;
 static S3_FORMAT: &'static str =
@@ -217,7 +220,7 @@ fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut 
     // It is OK to let it works as POC with something hard coded, because the bounties is not large.
     // Please take this easy.
     // Transfer to IPFS can be a POC start from put file in tmp, then transfer
-    // } else if command.starts_with("transfer") {
+    } else if command.starts_with("transfer") {
 
     // Keep this part comment, and you dont really need a S3 account to download something
     //     match handler.get(
@@ -231,7 +234,21 @@ fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut 
 
     //
     //     // TODO: transfer file to IPFS
-    //
+
+
+        let client = IpfsClient::default();
+        let data = Cursor::new("Hello World!");
+
+        let req = client
+            .add(data)
+            .map(|res| {
+                println!("{}", res.hash);
+            })
+        .map_err(|e| eprintln!("{}", e));
+
+        hyper::rt::run(req);
+
+
     //     // TODO: print the Qm hex or 0x hex for the user
     //
     } else if command.starts_with("cat") {
