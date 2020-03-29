@@ -17,8 +17,11 @@ extern crate sha2;
 extern crate url;
 #[macro_use]
 extern crate log;
+#[cfg(feature = "cli")]
 extern crate colored;
 extern crate hmacsha1;
+#[cfg(feature = "ui")]
+extern crate iui;
 extern crate md5;
 extern crate quick_xml;
 extern crate regex;
@@ -26,8 +29,13 @@ extern crate s3handler;
 extern crate serde_json;
 
 use clap::{App, Arg};
+#[cfg(feature = "cli")]
 use colored::*;
 use dirs::home_dir;
+#[cfg(feature = "ui")]
+use iui::controls::{Button, Group, Label, VerticalBox};
+#[cfg(feature = "ui")]
+use iui::prelude::*;
 use log::{Level, LevelFilter, Metadata, Record};
 use regex::Regex;
 use std::fs::{create_dir, read_dir, File, OpenOptions};
@@ -51,6 +59,7 @@ impl log::Log for MyLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
+            #[cfg(feature = "cli")]
             match record.level() {
                 log::Level::Error => println!("{} - {}", "ERROR".red().bold(), record.args()),
                 log::Level::Warn => println!("{} - {}", "WARN".red(), record.args()),
@@ -150,6 +159,7 @@ fn print_if_error(result: Result<(), failure::Error>) {
     };
 }
 
+#[cfg(feature = "cli")]
 fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut String) {
     debug!("===== do command: {} =====", command);
     if command.starts_with("la") {
@@ -491,7 +501,60 @@ If you have any issue, please submit to here https://github.com/yanganto/s3rs/is
     }
 }
 
-fn main() {
+#[cfg(feature = "ui")]
+fn run_ui() {
+    // Initialize the UI library
+    let ui = UI::init().expect("Couldn't initialize UI library");
+    // Create a window into which controls can be placed
+    let mut win = Window::new(&ui, "Test App", 200, 200, WindowType::NoMenubar);
+
+    // Create a vertical layout to hold the controls
+    let mut vbox = VerticalBox::new(&ui);
+    vbox.set_padded(&ui, true);
+
+    let mut group_vbox = VerticalBox::new(&ui);
+    let mut group = Group::new(&ui, "Group");
+
+    // Create two buttons to place in the window
+    let mut button = Button::new(&ui, "Button");
+    button.on_clicked(&ui, {
+        let ui = ui.clone();
+        move |btn| {
+            btn.set_text(&ui, "Clicked!");
+        }
+    });
+
+    let mut quit_button = Button::new(&ui, "Quit");
+    quit_button.on_clicked(&ui, {
+        let ui = ui.clone();
+        move |_| {
+            ui.quit();
+        }
+    });
+
+    // Create a new label. Note that labels don't auto-wrap!
+    let mut label_text = String::new();
+    label_text.push_str("There is a ton of text in this label.\n");
+    label_text.push_str("Pretty much every unicode character is supported.\n");
+    label_text.push_str("🎉 用户界面 사용자 인터페이스");
+    let label = Label::new(&ui, &label_text);
+
+    vbox.append(&ui, label, LayoutStrategy::Stretchy);
+    group_vbox.append(&ui, button, LayoutStrategy::Compact);
+    group_vbox.append(&ui, quit_button, LayoutStrategy::Compact);
+    group.set_child(&ui, group_vbox);
+    vbox.append(&ui, group, LayoutStrategy::Compact);
+
+    // Actually put the button in the window
+    win.set_child(&ui, vbox);
+    // Show the window
+    win.show(&ui);
+    // Run the application
+    ui.main();
+}
+
+#[cfg(feature = "cli")]
+fn run_cli() {
     log::set_logger(&MY_LOGGER).unwrap();
     log::set_max_level(LevelFilter::Error);
 
@@ -650,4 +713,12 @@ fn main() {
         println!("");
         stdout().flush().expect("Could not flush stdout");
     }
+}
+
+fn main() {
+    #[cfg(feature = "ui")]
+    run_ui();
+
+    #[cfg(feature = "cli")]
+    run_cli();
 }
