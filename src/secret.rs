@@ -1,8 +1,10 @@
+use crate::colored::Colorize;
 use crate::S3RS_CONFIG_FOLDER;
-use dirs::home_dir;
+
 use std::fs;
 
-use crate::colored::Colorize;
+use blake2_rfc::blake2b::blake2b;
+use dirs::home_dir;
 use hex;
 use s3handler::CredentialConfig;
 
@@ -148,9 +150,18 @@ host = "0x{}"
 access_key = "0x{}"
 secret_key = "0x{}"
 "#,
-        xor_by_secret(run_time_secret, host.to_string().into_bytes()),
-        xor_by_secret(run_time_secret, access_key.to_string().into_bytes()),
-        xor_by_secret(run_time_secret, secret_key.to_string().into_bytes()),
+        xor_by_secret(
+            &mut SecretGenerator::new(run_time_secret, "host"),
+            host.to_string().into_bytes()
+        ),
+        xor_by_secret(
+            &mut SecretGenerator::new(run_time_secret, "access_key"),
+            access_key.to_string().into_bytes()
+        ),
+        xor_by_secret(
+            &mut SecretGenerator::new(run_time_secret, "secret_key"),
+            secret_key.to_string().into_bytes()
+        ),
     );
     if secure.unwrap_or(false) {
         config = format!("{}secure = true\n", config);
@@ -159,7 +170,10 @@ secret_key = "0x{}"
         config = format!(
             "{}user = \"0x{}\"\n",
             config,
-            xor_by_secret(run_time_secret, u.to_string().into_bytes())
+            xor_by_secret(
+                &mut SecretGenerator::new(run_time_secret, "user"),
+                u.to_string().into_bytes()
+            )
         );
     }
     if let Some(t) = s3_type {
@@ -169,7 +183,10 @@ secret_key = "0x{}"
         config = format!(
             "{}region = \"0x{}\"\n",
             config,
-            xor_by_secret(run_time_secret, r.clone().into_bytes()),
+            xor_by_secret(
+                &mut SecretGenerator::new(run_time_secret, "region"),
+                r.clone().into_bytes()
+            ),
         );
     }
 
@@ -255,38 +272,153 @@ pub fn decrypt_config(run_time_secret: &Vec<u8>, config: &mut CredentialConfig) 
         ..
     } = config;
     if access_key.starts_with("0x") {
-        config.access_key = decode_by_secret(run_time_secret, access_key[2..].to_string());
+        config.access_key = decrypt_by_secret(
+            &mut SecretGenerator::new(run_time_secret, "access_key"),
+            access_key[2..].to_string(),
+        );
     }
     if secret_key.starts_with("0x") {
-        config.secret_key = decode_by_secret(run_time_secret, secret_key[2..].to_string());
+        config.secret_key = decrypt_by_secret(
+            &mut SecretGenerator::new(run_time_secret, "secret_key"),
+            secret_key[2..].to_string(),
+        );
     }
     if host.starts_with("0x") {
-        config.host = decode_by_secret(run_time_secret, host[2..].to_string());
+        config.host = decrypt_by_secret(
+            &mut SecretGenerator::new(run_time_secret, "host"),
+            host[2..].to_string(),
+        );
     }
     if let Some(r) = region {
         if r.starts_with("0x") {
-            config.region = Some(decode_by_secret(run_time_secret, r[2..].to_string()));
+            config.region = Some(decrypt_by_secret(
+                &mut SecretGenerator::new(run_time_secret, "region"),
+                r[2..].to_string(),
+            ));
         }
     }
     if let Some(u) = user {
         if u.starts_with("0x") {
-            config.user = Some(decode_by_secret(run_time_secret, u[2..].to_string()));
+            config.user = Some(decrypt_by_secret(
+                &mut SecretGenerator::new(run_time_secret, "user"),
+                u[2..].to_string(),
+            ));
         }
     }
 }
 
-fn xor_by_secret(run_time_secret: &Vec<u8>, target: Vec<u8>) -> String {
+fn xor_by_secret(secret_generator: &mut SecretGenerator, target: Vec<u8>) -> String {
     let mut target = target;
-    for (idx, b) in target.iter_mut().enumerate() {
-        *b = *b ^ run_time_secret[idx % run_time_secret.len()]
+    for b in target.iter_mut() {
+        *b = *b
+            ^ secret_generator
+                .next()
+                .expect("field to encrypt is too long")
     }
     hex::encode(target)
 }
 
-fn decode_by_secret(run_time_secret: &Vec<u8>, target: String) -> String {
+fn decrypt_by_secret(secret_generator: &mut SecretGenerator, target: String) -> String {
     let mut t = hex::decode(target).unwrap_or_default();
-    for (idx, b) in t.iter_mut().enumerate() {
-        *b = *b ^ run_time_secret[idx % run_time_secret.len()]
+    for b in t.iter_mut() {
+        *b = *b
+            ^ secret_generator
+                .next()
+                .expect("field to decrypt is too long")
     }
     String::from_utf8(t).unwrap_or("".to_string())
+}
+
+struct SecretGenerator<'a> {
+    seed: &'a Vec<u8>,
+    field: &'static str,
+    counter: Option<u64>,
+    current_secrete_round: u8,
+    secret: [u8; 32],
+}
+
+impl<'a> SecretGenerator<'a> {
+    fn new(seed: &'a Vec<u8>, field: &'static str) -> Self {
+        let mut secret = [0; 32];
+        let mut data: Vec<u8> = (*seed).clone();
+        data.append(&mut field.to_string().into_bytes());
+        data.push(0u8);
+        secret.copy_from_slice(blake2b(32, &[], &data[..]).as_bytes());
+        SecretGenerator {
+            seed,
+            field,
+            counter: None,
+            current_secrete_round: 0u8,
+            secret,
+        }
+    }
+}
+
+impl<'a> Iterator for SecretGenerator<'a> {
+    type Item = u8;
+    fn next(&mut self) -> Option<u8> {
+        let (counter, round, idx) = if let Some(c) = self.counter {
+            if c == 32u64 * u8::max_value() as u64 {
+                return None;
+            }
+            (c + 1, (c + 1) / 32, (c + 1) % 32)
+        } else {
+            (0, 0, 0)
+        };
+        if round != self.current_secrete_round as u64 {
+            self.current_secrete_round += 1;
+            let mut data: Vec<u8> = (*self.seed).clone();
+            data.append(&mut self.field.to_string().into_bytes());
+            data.push(self.current_secrete_round);
+            self.secret
+                .copy_from_slice(blake2b(32, &[], &data[..]).as_bytes());
+        }
+        self.counter = Some(counter);
+        Some(self.secret[idx as usize])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encrpt_and_decrypt_small_str() {
+        let message = "a small string";
+
+        let key = "A apple a day keep the doctor away"
+            .to_string()
+            .into_bytes();
+        let encrypt_message = xor_by_secret(
+            &mut SecretGenerator::new(&key, "field name"),
+            message.to_string().into_bytes(),
+        );
+        assert_eq!(
+            decrypt_by_secret(
+                &mut SecretGenerator::new(&key, "field name"),
+                encrypt_message
+            ),
+            message
+        );
+    }
+    #[test]
+    fn test_encrpt_and_decrypt_super_long_str() {
+        // 1000 chars, this cipher should works for string less than 8192
+        let message = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+        let key = "A apple a day keep the doctor away"
+            .to_string()
+            .into_bytes();
+        let encrypt_message = xor_by_secret(
+            &mut SecretGenerator::new(&key, "field name"),
+            message.to_string().into_bytes(),
+        );
+        assert_eq!(
+            decrypt_by_secret(
+                &mut SecretGenerator::new(&key, "field name"),
+                encrypt_message
+            ),
+            message
+        );
+    }
 }
