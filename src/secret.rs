@@ -7,6 +7,9 @@ use blake2_rfc::blake2b::blake2b;
 use dirs::home_dir;
 use hex;
 use s3handler::CredentialConfig;
+use rand::{thread_rng, Rng};
+
+static FILTER: [u8; 3] = [10, 9, 13];
 
 pub fn print_secret_usage() {
     println!(
@@ -308,14 +311,28 @@ pub fn decrypt_config(run_time_secret: &Vec<u8>, config: &mut CredentialConfig) 
 }
 
 fn xor_by_secret(secret_generator: &mut SecretGenerator, target: Vec<u8>) -> String {
-    let mut target = target;
-    for b in target.iter_mut() {
+	let mut rng = thread_rng();
+	let target_len = target.len();
+	let mut target = target;
+	let mut mixed_target = vec![128];
+	mixed_target.append(&mut target);
+	mixed_target.rotate_left(rng.gen_range(0, target_len));
+
+	if mixed_target.len() < 256 {
+		for _ in 0 .. (256 - mixed_target.len()) {
+			let r = rng.gen_range(0, mixed_target.len());
+			mixed_target.insert(r, *FILTER.iter().nth(r % FILTER.len()).unwrap());
+		}
+	}
+
+    for b in mixed_target.iter_mut() {
         *b = *b
             ^ secret_generator
                 .next()
                 .expect("field to encrypt is too long")
     }
-    hex::encode(target)
+
+    hex::encode(mixed_target)
 }
 
 fn decrypt_by_secret(secret_generator: &mut SecretGenerator, target: String) -> String {
@@ -326,7 +343,11 @@ fn decrypt_by_secret(secret_generator: &mut SecretGenerator, target: String) -> 
                 .next()
                 .expect("field to decrypt is too long")
     }
-    String::from_utf8(t).unwrap_or("".to_string())
+	let idx = t.iter().position(|&b| b == 128).unwrap_or(0);
+	t.rotate_left(idx);
+	t.remove(0);
+	let t = t.into_iter().filter(|c| !FILTER.contains(c)).collect();
+    String::from_utf8(t).unwrap()
 }
 
 struct SecretGenerator<'a> {
