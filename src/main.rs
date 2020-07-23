@@ -531,7 +531,7 @@ fn cli() -> ArgMatches<'static> {
 
 fn main() {
     log::set_logger(&MY_LOGGER).unwrap();
-    log::set_max_level(LevelFilter::Error);
+    log::set_max_level(LevelFilter::Warn);
 
     let mut run_time_secret: Vec<u8> = Vec::new();
     let matches = cli();

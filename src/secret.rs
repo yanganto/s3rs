@@ -112,6 +112,9 @@ pub fn change_secret(run_time_secret: &mut Vec<u8>, command: String, verbose: bo
             secret_phrases.join(" ").as_bytes().to_vec()
         }
     };
+    if new_secret.len() < 12 {
+        warn!("Please notice that your secret is too short!");
+    }
     if error {
         error!("generate secret error please check your hex string or secret phrase");
     } else {
