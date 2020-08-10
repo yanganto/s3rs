@@ -15,6 +15,9 @@ an **S3** **R**ich **S**upport client
 - support filters [v0.2.8](https://www.ant-lab.tw/2019-09-21/)
 - support format without protocol [v0.2.9](https://www.ant-lab.tw/2019-09-22/)
 - support command-line interface mode [v0.3.0](https://www.ant-lab.tw/2019-09-28/)
+- support s3 config file encryption function v0.3.3
+  - `s3rs -c ~/.config/s3rs/aws2.toml  -s 'the password you like' secret encrypt`
+  - run s3rs with `-s` option or use `secret set <secret phrases or hexal literal>`
 
 ### Download excutable binary
 Download the link as follow and unzip
@@ -57,7 +60,14 @@ Download the link as follow and unzip
 | tag put s3://_bucket_/_object_ _key1_=_value1_ [_key2_=_value2_] ... | add tag(s) to the object                                    | O    | O   |
 | tag del s3://_bucket_/_object_                                       | remove tag(s) from the object                               | O    | O   |
 | tag rm s3://_bucket_/_object_                                        | remove tag(s) from the object                               | O    | O   |
-| /uri?query                                                           | give the orignal url                                        | O    | O   |
+| /uri?query                                                           | give the original url                                        | O    | O   |
+| secret set <secret phrases>                                          | set up the secret to run time encrypt or decrypt the config  | O    | O   |
+| secret set <hexal literal>                                           | set up the secret to run time encrypt or decrypt the config  | O    | O   |
+| secret unset                                                         | clean up the secret in memory                           | O    | O   |
+| secret encrypt                                                       | encrypted and print current config on screen               | O    | O   |
+| secret encrypt <file name>                                           | encrypted and save current  config to s3rs config folder   | O    | O   |
+| secret show                                                          | show current unencrypt config on screen                    | O    | O   |
+| secret show <file name>                                              | save current unencrypt config to s3rs config folder         | O    | O   |
 
 #### Table 2: List commands will send more than one http request
 | HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |

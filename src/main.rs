@@ -2,11 +2,10 @@ extern crate dirs;
 extern crate toml;
 #[macro_use]
 extern crate serde_derive;
-extern crate interactor;
-extern crate reqwest;
-
 extern crate base64;
 extern crate chrono;
+extern crate interactor;
+extern crate reqwest;
 #[macro_use]
 extern crate clap;
 extern crate crypto;
@@ -25,17 +24,20 @@ extern crate regex;
 extern crate s3handler;
 extern crate serde_json;
 
-use clap::{App, Arg};
-use colored::*;
-use dirs::home_dir;
-use log::{Level, LevelFilter, Metadata, Record};
-use regex::Regex;
 use std::fs::{create_dir, read_dir, File, OpenOptions};
 use std::io;
 use std::io::stdout;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::str;
 use std::str::FromStr;
+
+use clap::{App, Arg, ArgMatches};
+use colored::*;
+use dirs::home_dir;
+use log::{Level, LevelFilter, Metadata, Record};
+use regex::Regex;
+
+mod secret;
 
 static MY_LOGGER: MyLogger = MyLogger;
 static S3_FORMAT: &'static str =
@@ -86,7 +88,7 @@ struct Config {
     credential: Option<Vec<s3handler::CredentialConfig>>,
 }
 impl<'a> Config {
-    fn gen_selecitons(&'a self) -> Vec<String> {
+    fn gen_selections(&'a self) -> Vec<String> {
         let mut display_list = Vec::new();
         let credential = &self.credential.clone().unwrap();
         for cre in credential.into_iter() {
@@ -102,6 +104,16 @@ impl<'a> Config {
             display_list.push(option);
         }
         display_list
+    }
+
+    fn decrypt(&'a mut self, run_time_secret: &Vec<u8>) {
+        if run_time_secret.len() > 0 {
+            for cre in self.credential.iter_mut() {
+                for c in cre.iter_mut() {
+                    secret::decrypt_config(run_time_secret, c);
+                }
+            }
+        }
     }
 }
 
@@ -438,8 +450,6 @@ USAGE:
 {38} s3://{2} / {38} {2}
     show the bucket information
     acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph)
-
-If you have any issue, please submit to here https://github.com/yanganto/s3rs/issues
     "#,
             "la".bold(),
             "ls".bold(),
@@ -483,6 +493,10 @@ If you have any issue, please submit to here https://github.com/yanganto/s3rs/is
             "ll".bold(),
             "<prefix>".cyan(), //40
         );
+        secret::print_secret_usage();
+        println!(
+            "If you have any issue, please submit to here https://github.com/yanganto/s3rs/issues"
+        );
     } else {
         println!(
             "command {} not found, help for usage or exit for quit",
@@ -490,12 +504,8 @@ If you have any issue, please submit to here https://github.com/yanganto/s3rs/is
         );
     }
 }
-
-fn main() {
-    log::set_logger(&MY_LOGGER).unwrap();
-    log::set_max_level(LevelFilter::Error);
-
-    let matches = App::new(env!("CARGO_PKG_NAME"))
+fn cli() -> ArgMatches<'static> {
+    App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
@@ -506,10 +516,28 @@ fn main() {
                 .value_name("S3RS CONFIGURE")
                 .help("set the name of config file under ~/.config/s3rs, or a config file with fullpath")
         )
+		.arg(
+            Arg::with_name("secret")
+                .short("s")
+                .long("secret")
+                .value_name("Runtime Secret")
+                .help("Set the run time secret to encrypt/decrept your s3config file")
+		)
         .arg(
             Arg::from_usage("<s3rs cmd>...").requires("config").required(false)
         )
-        .get_matches();
+        .get_matches()
+}
+
+fn main() {
+    log::set_logger(&MY_LOGGER).unwrap();
+    log::set_max_level(LevelFilter::Warn);
+
+    let mut run_time_secret: Vec<u8> = Vec::new();
+    let matches = cli();
+    if let Some(s) = matches.value_of("secret") {
+        secret::change_secret(&mut run_time_secret, s.to_string(), false);
+    }
 
     let mut config_contents = String::new();
     let interactive: bool;
@@ -576,78 +604,78 @@ fn main() {
         }
     };
 
-    let config: Config = toml::from_str(config_contents.as_str()).unwrap();
-    let config_option: Vec<String> = config.gen_selecitons();
+    let mut config: Config = toml::from_str(config_contents.as_str()).unwrap();
 
-    let mut chosen_int = if config_option.len() == 1 {
-        0usize
-    } else {
-        my_pick_from_list_internal(&config_option, "Selection: ").unwrap()
-    };
+    let mut reload_config = true;
 
-    let config_list = config.credential.unwrap();
-    let mut handler = s3handler::Handler::from(&config_list[chosen_int]);
-    let mut login_user = config_list[chosen_int]
-        .user
-        .clone()
-        .unwrap_or("unknown".to_string());
-    let mut s3_type = config_list[chosen_int]
-        .s3_type
-        .clone()
-        .unwrap_or("aws".to_string());
-
-    if matches.value_of("config").is_none() {
-        println!(
-            "enter command, type {} for usage or type {} for quit",
-            "help".bold(),
-            "exit".bold()
-        );
-    };
-
-    // let mut raw_input;
-    let mut command = match values_t!(matches, "s3rs cmd", String) {
-        Ok(cmds) => cmds.join(" "),
-        Err(_) => String::new(),
-    };
-
-    while command != "exit" && command != "quit" {
-        if command.starts_with("logout") {
-            println!("");
-            chosen_int = my_pick_from_list_internal(&config_option, "Selection: ").unwrap();
-            handler = s3handler::Handler::from(&config_list[chosen_int]);
-            login_user = config_list[chosen_int]
-                .user
-                .clone()
-                .unwrap_or(" ".to_string());
-            s3_type = config_list[chosen_int]
-                .s3_type
-                .clone()
-                .unwrap_or("aws".to_string());
+    while reload_config {
+        reload_config = false;
+        config.decrypt(&run_time_secret);
+        let config_option: Vec<String> = config.gen_selections();
+        let chosen_int = if config_option.len() == 1 {
+            0usize
         } else {
-            do_command(&mut handler, &s3_type, &mut command);
-        }
+            my_pick_from_list_internal(&config_option, "Selection: ").unwrap()
+        };
+        let config_list = config.credential.clone().unwrap().clone();
+        let mut handler = s3handler::Handler::from(&config_list[chosen_int]);
+        let login_user = config_list[chosen_int]
+            .user
+            .clone()
+            .unwrap_or("unknown".to_string());
+        let s3_type = config_list[chosen_int]
+            .s3_type
+            .clone()
+            .unwrap_or("aws".to_string());
 
-        if !interactive {
-            break;
-        }
-
-        command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
-            Ok(mut tty) => {
-                tty.flush().expect("Could not open tty");
-                let _ = tty.write_all(
-                    format!("{} {} {} ", "s3rs".green(), login_user.cyan(), ">".green()).as_bytes(),
-                );
-                let reader = BufReader::new(&tty);
-                let mut command_iter = reader.lines().map(|l| l.unwrap());
-                command_iter.next().unwrap_or("logout".to_string())
-            }
-            Err(e) => {
-                println!("{:?}", e);
-                "quit".to_string()
-            }
+        if matches.value_of("config").is_none() {
+            println!(
+                "enter command, type {} for usage or type {} for quit",
+                "help".bold(),
+                "exit".bold()
+            );
         };
 
-        println!("");
-        stdout().flush().expect("Could not flush stdout");
+        // let mut raw_input;
+        let mut command = match values_t!(matches, "s3rs cmd", String) {
+            Ok(cmds) => cmds.join(" "),
+            Err(_) => String::new(),
+        };
+
+        while command != "exit" && command != "quit" {
+            if command.starts_with("logout") {
+                reload_config = true;
+                break;
+            } else if command.starts_with("secret") {
+                let mut command = command.strip_prefix("secret").unwrap().trim().to_string();
+                secret::do_command(&mut run_time_secret, &mut command, &config_list, chosen_int)
+            } else {
+                do_command(&mut handler, &s3_type, &mut command);
+            }
+
+            if !interactive {
+                break;
+            }
+
+            command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
+                Ok(mut tty) => {
+                    tty.flush().expect("Could not open tty");
+                    let _ = tty.write_all(
+                        format!("{} {} {} ", "s3rs".green(), login_user.cyan(), ">".green())
+                            .as_bytes(),
+                    );
+                    let reader = BufReader::new(&tty);
+                    let mut command_iter = reader.lines().map(|l| l.unwrap());
+                    command_iter.next().unwrap_or("logout".to_string())
+                }
+                Err(e) => {
+                    println!("{:?}", e);
+                    "quit".to_string()
+                }
+            };
+
+            println!("");
+            stdout().flush().expect("Could not flush stdout");
+        }
     }
 }
