@@ -2,9 +2,10 @@ S3RS
 ---
 
 [![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
-[![Become a Patron!](https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/25e46574-05d5-4425-916d-e5292bb066ac/dak794t-bcbae66e-a0eb-4dab-92b6-dcf09da0a2ba.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwic3ViIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sIm9iaiI6W1t7InBhdGgiOiIvZi8yNWU0NjU3NC0wNWQ1LTQ0MjUtOTE2ZC1lNTI5MmJiMDY2YWMvZGFrNzk0dC1iY2JhZTY2ZS1hMGViLTRkYWItOTJiNi1kY2YwOWRhMGEyYmEucG5nIn1dXX0.ELaxFZISXbUj1c0ExOlsSwm2GWwG0C9Vib9tawSALiQ) Become a Patron!](https://www.patreon.com/bePatron?u=28035928)
+[![Become a Patron!](https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/25e46574-05d5-4425-916d-e5292bb066ac/dak794t-bcbae66e-a0eb-4dab-92b6-dcf09da0a2ba.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwic3ViIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sIm9iaiI6W1t7InBhdGgiOiIvZi8yNWU0NjU3NC0wNWQ1LTQ0MjUtOTE2ZC1lNTI5MmJiMDY2YWMvZGFrNzk0dC1iY2JhZTY2ZS1hMGViLTRkYWItOTJiNi1kY2YwOWRhMGEyYmEucG5nIn1dXX0.ELaxFZISXbUj1c0ExOlsSwm2GWwG0C9Vib9tawSALiQ) Become a Patron!](https://www.patreon.com/user?u=28035928)
 
 an **S3** **R**ich **S**upport client
+- [Download executable](https://github.com/yanganto/s3rs/releases/download/v0.4.0/s3rs-v0.4.0-linux.zip), unzip and ready to go
 - rust edition 2018
 - multi config (please put config files under `~/.config/s3rs`)
 - interactive command line tool
@@ -15,17 +16,13 @@ an **S3** **R**ich **S**upport client
 - support filters [v0.2.8](https://www.ant-lab.tw/2019-09-21/)
 - support format without protocol [v0.2.9](https://www.ant-lab.tw/2019-09-22/)
 - support command-line interface mode [v0.3.0](https://www.ant-lab.tw/2019-09-28/)
-- support s3 config file encryption function v0.3.3
+- support s3 config file encryption function v0.4.0
   - `s3rs -c ~/.config/s3rs/aws2.toml  -s 'the password you like' secret encrypt`
   - run s3rs with `-s` option or use `secret set <secret phrases or hexal literal>`
 
-### Download excutable binary
-Download the link as follow and unzip
-- https://github.com/yanganto/s3rs/releases/download/v0.3.2/s3rs-v0.3.2-linux.zip
-
 ### How to use
 #### shell mode
-- excute `s3rs` will into shell mode, and excute `help`, you can see the commands you can use
+- execute `s3rs` will into shell mode, and execute `help`, you can see the commands you can use
 #### command mode
 - use config file with full path
   - `s3rs --config=/your/s3s/config/file ls`
@@ -48,7 +45,7 @@ Download the link as follow and unzip
 | rb s3://_bucket_                                                     | delete bucket                                               | O    | O   |
 | put <file> s3://_bucket_/_object_                                    | upload the file                                             | O    | O   |
 | put <file> s3://_bucket_                                             | upload the file (file name as object name)                  | O    | O   |
-| put test s3://_bucket_/_object_                                      | upload a test file sepcific object name                     | O    | O   |
+| put test s3://_bucket_/_object_                                      | upload a test file specific object name                     | O    | O   |
 | get s3://_bucket_/_object_ _file_                                    | download object                                             | O    | O   |
 | get s3://_bucket_/_object_                                           | download object in current folder                           | O    | O   |
 | cat s3://_bucket_/_object_                                           | show the object content                                     | O    | O   |
@@ -66,8 +63,8 @@ Download the link as follow and unzip
 | secret unset                                                         | clean up the secret in memory                           | O    | O   |
 | secret encrypt                                                       | encrypted and print current config on screen               | O    | O   |
 | secret encrypt <file name>                                           | encrypted and save current  config to s3rs config folder   | O    | O   |
-| secret show                                                          | show current unencrypt config on screen                    | O    | O   |
-| secret show <file name>                                              | save current unencrypt config to s3rs config folder         | O    | O   |
+| secret show                                                          | show current plain config on screen                    | O    | O   |
+| secret show <file name>                                              | save current plain config to s3rs config folder         | O    | O   |
 
 #### Table 2: List commands will send more than one http request
 | HIGH LEVEL COMMAND | INTEGRATE FUNCTIONS                                                                      | CEPH | AWS |
@@ -84,7 +81,7 @@ Download the link as follow and unzip
 #### Table 4: List commands only for CEPH with system keys
 | SHELL SETTING COMMAND         | FUNCTION                                 |
 |-------------------------------|------------------------------------------|
-| s3\_type [ceph/aws/aws4/aws2] | change setting for different S3 providor |
+| s3\_type [ceph/aws/aws4/aws2] | change setting for different S3 provider |
 | format [xml/json]             | change the format client request         |
 | log [trace/debug/info/erro]   | change the log level                     |
 |                               | - Info : for Http header and body        |
@@ -121,7 +118,7 @@ Set up the path for rust binnary
 The config file will auto setup when binary first time launch
 - `s3rs`
 
-edit the config file at ~/.s3rs.toml
+Edit the config file at ~/.s3rs.toml
 - `vi ~/.s3rs.toml`
 
 
@@ -131,7 +128,7 @@ Install rust tools rustup and cargo
 - `git clone https://github.com/yanganto/s3rs.git`
 - `cargo test`
 - `cargo build`
-- The excutable binary will in `./target/debug/s3rs`
+- The executable binary will in `./target/debug/s3rs`
 
 ### Demo
 - A short demo [video](https://youtu.be/MtPYhJnbMfs)
