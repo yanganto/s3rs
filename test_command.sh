@@ -7,7 +7,7 @@ set bucket [lindex $argv 1]
 set prompt ")>";  # this my shell prompt, change to yours if you use this script
 set timeout 120
 
-spawn dd if=/dev/zero bs=1024 count=7000 of=/tmp/7M
+spawn dd if=/dev/urandom bs=1024 count=7000 of=/tmp/7M
 spawn cargo build
 
 expect $prompt
