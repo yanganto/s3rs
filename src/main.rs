@@ -226,7 +226,11 @@ fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut 
             Ok(_) => println!("download completed"),
         };
     } else if command.starts_with("cat") {
-        print_if_error(handler.cat(command.split_whitespace().nth(1).unwrap_or("")));
+        if let Ok(o) = handler.cat(command.split_whitespace().nth(1).unwrap_or("")) {
+            println!("{}", o.1.unwrap_or("".to_string()));
+        } else {
+            error!("can not cat the object");
+        }
     } else if command.starts_with("del") || command.starts_with("rm") {
         let mut iter = command.split_whitespace();
         let target = iter.nth(1).unwrap_or("");

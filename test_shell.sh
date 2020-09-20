@@ -1,4 +1,4 @@
-#!/usr/bin/expect -f
+#!/usr/bin/env -S expect -f
 
 # usage ./test_command.sh <number_of_your_profile> <bucket_name>
 
