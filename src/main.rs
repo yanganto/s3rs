@@ -1,28 +1,9 @@
-extern crate dirs;
-extern crate toml;
 #[macro_use]
 extern crate serde_derive;
-extern crate base64;
-extern crate chrono;
-extern crate interactor;
-extern crate reqwest;
 #[macro_use]
 extern crate clap;
-extern crate crypto;
-extern crate hmac;
-extern crate hyper;
-extern crate rustc_serialize;
-extern crate sha2;
-extern crate url;
 #[macro_use]
 extern crate log;
-extern crate colored;
-extern crate hmacsha1;
-extern crate md5;
-extern crate quick_xml;
-extern crate regex;
-extern crate s3handler;
-extern crate serde_json;
 
 use std::fs::{create_dir, read_dir, File, OpenOptions};
 use std::io;
@@ -32,90 +13,23 @@ use std::str;
 use std::str::FromStr;
 
 use clap::{App, Arg, ArgMatches};
-use colored::*;
+use colored::{self, *};
 use dirs::home_dir;
-use log::{Level, LevelFilter, Metadata, Record};
+use log::LevelFilter;
 use regex::Regex;
 
-mod secret;
+use command::{print_usage, secret};
+use config::Config;
+use logger::{change_log_type, Logger};
 
-static MY_LOGGER: MyLogger = MyLogger;
+mod command;
+mod config;
+mod logger;
+
+static MY_LOGGER: Logger = Logger;
 static S3_FORMAT: &'static str =
     r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
 static S3RS_CONFIG_FOLDER: &'static str = ".config/s3rs";
-
-struct MyLogger;
-
-impl log::Log for MyLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Trace
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            match record.level() {
-                log::Level::Error => println!("{} - {}", "ERROR".red().bold(), record.args()),
-                log::Level::Warn => println!("{} - {}", "WARN".red(), record.args()),
-                log::Level::Info => println!("{} - {}", "INFO".cyan(), record.args()),
-                log::Level::Debug => println!("{} - {}", "DEBUG".blue().bold(), record.args()),
-                log::Level::Trace => println!("{} - {}", "TRACE".blue(), record.args()),
-            }
-        }
-    }
-    fn flush(&self) {}
-}
-
-fn change_log_type(command: &str) {
-    if command.ends_with("trace") {
-        log::set_max_level(LevelFilter::Trace);
-        println!("set up log level trace");
-    } else if command.ends_with("debug") {
-        log::set_max_level(LevelFilter::Debug);
-        println!("set up log level debug");
-    } else if command.ends_with("info") {
-        log::set_max_level(LevelFilter::Info);
-        println!("set up log level info");
-    } else if command.ends_with("error") {
-        log::set_max_level(LevelFilter::Error);
-        println!("set up log level error");
-    } else {
-        println!("usage: log [trace/debug/info/error]");
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct Config {
-    credential: Option<Vec<s3handler::CredentialConfig>>,
-}
-impl<'a> Config {
-    fn gen_selections(&'a self) -> Vec<String> {
-        let mut display_list = Vec::new();
-        let credential = &self.credential.clone().unwrap();
-        for cre in credential.into_iter() {
-            let c = cre.clone();
-            let option = String::from(format!(
-                "[{}] {} ({}) {} ({})",
-                c.s3_type.unwrap_or(String::from("aws")),
-                c.host,
-                c.region.unwrap_or(String::from("us-east-1")),
-                c.user.unwrap_or(String::from("user")),
-                c.access_key
-            ));
-            display_list.push(option);
-        }
-        display_list
-    }
-
-    fn decrypt(&'a mut self, run_time_secret: &Vec<u8>) {
-        if run_time_secret.len() > 0 {
-            for cre in self.credential.iter_mut() {
-                for c in cre.iter_mut() {
-                    secret::decrypt_config(run_time_secret, c);
-                }
-            }
-        }
-    }
-}
 
 fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T) -> io::Result<T>
 where
@@ -360,144 +274,10 @@ fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut 
     } else if command.starts_with("help") {
         println!(
             r#"
-USAGE:
-
-{0}
-    list all objects
-
-{1}
-    list all buckets
-
-{1} s3://{2}
-    list all objects of the bucket
-
-{1} s3://{2}/{40}
-    list objects with prefix in the bucket
-
-{39}
-    list all object detail
-
-{39} s3://{2}
-    list all objects detail of the bucket
-
-{39} s3://{2}/{40}
-    list detail of the objects with prefix in the bucket
-
-{3} s3://{2}
-    create bucket
-
-{4} s3://{2}
-    delete bucket
-
-{5} {6} s3://{2}/{7}
-    upload the file with specify object name
-
-{5} {6} s3://{2}
-    upload the file as the same file name
-
-{5} test s3://{2}/{7}
-    upload a small test text file with specify object name
-
-{8} s3://{2}/{7} {6}
-    download the object
-
-{8} s3://{2}/{7}
-    download the object to current folder
-
-{9} s3://{2}/{7}
-    display the object content
-
-{10} s3://{2}/{7} [delete-marker:true]
-    delete the object
-
-{29} {1}/{36} s3://{2}/{7}
-    list tags of the object
-
-{29} {33}/{5} s3://{2}/{7}  {30}={31} ...
-    add tags to the object
-
-{29} {10}/{4} s3://{2}/{7}
-    remove tags from the object
-
-/{11}?{12}
-    get uri command
-
-{13}
-    show this usage
-
-{14} {32}/{15}/{16}/{17}/{18}
-    change the log level
-    {32} for every thing
-    {15} for request auth detail
-    {16} for request header, status code, raw body
-    {17} for request http response
-    {18} is default
-
-{19} {20}/{21}
-    change the auth type and format for different S3 service
-
-{22} {23}/{24}
-    change the auth type
-
-{25} {26}/{27}
-    change the request format
-
-{28}
-    quit the programe
-
-{34} / {35}
-    logout and reselect account
-
-{37} s3://{2}
-    show the usage of the bucket (ceph admin only)
-
-{38} s3://{2} / {38} {2}
-    show the bucket information
-    acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph)
-    "#,
-            "la".bold(),
-            "ls".bold(),
-            "<bucket>".cyan(),
-            "mb".bold(),
-            "rm".bold(),
-            "put".bold(),
-            "<file>".cyan(),
-            "<object>".cyan(),
-            "get".bold(),
-            "cat".bold(),
-            "del".bold(),
-            "<uri>".cyan(),
-            "<query string>".cyan(),
-            "help".bold(),
-            "log".bold(),
-            "trace".blue(),
-            "debug".blue(),
-            "info".blue(),
-            "error".blue(),
-            "s3_type".bold(),
-            "aws".blue(),
-            "ceph".blue(),
-            "auth_type".bold(),
-            "aws2".blue(),
-            "aws4".blue(),
-            "format".bold(),
-            "xml".blue(),
-            "json".blue(),
-            "exit".bold(),
-            "tag".bold(),
-            "<key>".cyan(),
-            "<value>".cyan(),
-            "trace".blue(),
-            "add".bold(),
-            "logout".bold(),
-            "Ctrl + d".bold(),
-            "list".bold(),
-            "usage".bold(),
-            "info".bold(),
-            "ll".bold(),
-            "<prefix>".cyan(), //40
+USAGE:"#
         );
-        secret::print_secret_usage();
+        print_usage();
+        secret::print_usage();
         println!(
             "If you have any issue, please submit to here https://github.com/yanganto/s3rs/issues"
         );

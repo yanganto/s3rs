@@ -11,7 +11,7 @@ use s3handler::CredentialConfig;
 
 static FILTER: [u8; 3] = [10, 9, 13];
 
-pub fn print_secret_usage() {
+pub fn print_usage() {
     println!(
         r#"
 SECRET FEATURE
@@ -80,7 +80,7 @@ pub fn do_command(
     } else if command.starts_with("show") {
         show_config(&config_list[chosen_int], command.strip_prefix("show"));
     } else {
-        print_secret_usage()
+        print_usage()
     }
 }
 
