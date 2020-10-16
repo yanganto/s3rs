@@ -11,7 +11,7 @@ use s3handler::CredentialConfig;
 
 static FILTER: [u8; 3] = [10, 9, 13];
 
-pub fn print_secret_usage() {
+pub fn print_usage() {
     println!(
         r#"
 SECRET FEATURE
@@ -37,9 +37,6 @@ s3rs will use your secret to encrpt/decrypt you s3rs configure file to provide a
 	{6} is optional, if {6} is not specific, the pain config wiil print on screen, else the 
 	pain s3rs config file will be generated in S3RS_CONFIG_FOLDER, default is `~/.config/s3rs`
 	if there is any file with the same name, it will be overwritten
-
-
-If you have any issue, please submit to here https://github.com/yanganto/s3rs/issues
     "#,
         "secret".bold(),
         "set".bold(),
@@ -80,7 +77,7 @@ pub fn do_command(
     } else if command.starts_with("show") {
         show_config(&config_list[chosen_int], command.strip_prefix("show"));
     } else {
-        print_secret_usage()
+        print_usage()
     }
 }
 
