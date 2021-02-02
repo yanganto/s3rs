@@ -1,4 +1,5 @@
 use regex::Regex;
+use humansize::{FileSize, file_size_opts};
 
 use crate::logger::change_log_type;
 use colored::{self, *};
@@ -186,11 +187,11 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
         match r {
             Err(e) => println!("{}", e),
             Ok(v) => {
-                println!("STORAGE CLASS\tMODIFIED TIME\t\t\tETAG\t\t\t\t\tKEY",);
+                println!("STORAGE CLASS\tMODIFIED TIME\t\t\tETAG\t\t\t\t\tSIZE\tKEY",);
                 for o in v {
                     debug!("{:?}", o);
                     println!(
-                        "{}\t{}\t{}\t{}",
+                        "{}\t{}\t{}\t{}\t{}",
                         o.storage_class.clone().unwrap_or("        ".to_string()),
                         o.mtime
                             .clone()
@@ -198,6 +199,7 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
                         o.etag
                             .clone()
                             .unwrap_or("                                 ".to_string()),
+                        o.size.map(|s| s.file_size(file_size_opts::CONVENTIONAL).unwrap()).unwrap_or_else(|| "".to_string()),
                         String::from(o)
                     );
                 }
