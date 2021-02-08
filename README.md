@@ -3,7 +3,7 @@ S3RS
 [![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
 
 an **S3** **R**ich **S**upport client
-- [Download executable](https://github.com/yanganto/s3rs/releases/download/v0.6.6/s3rs-v0.6.6-linux.zip), unzip and ready to go
+- [Download executable](https://github.com/yanganto/s3rs/releases/download/v0.4.5/s3rs-v0.4.5-linux.zip), unzip and ready to go
 - rust edition 2018
 - multi config (please put config files under `~/.config/s3rs`)
 - interactive command line tool

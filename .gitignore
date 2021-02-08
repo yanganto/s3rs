@@ -1,2 +1,4 @@
 Cargo.lock
 target
+s3rs
+*.zip
