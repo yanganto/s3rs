@@ -1,11 +1,9 @@
 S3RS
 ---
-
 [![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
-[![Become a Patron!](https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/25e46574-05d5-4425-916d-e5292bb066ac/dak794t-bcbae66e-a0eb-4dab-92b6-dcf09da0a2ba.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwic3ViIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sIm9iaiI6W1t7InBhdGgiOiIvZi8yNWU0NjU3NC0wNWQ1LTQ0MjUtOTE2ZC1lNTI5MmJiMDY2YWMvZGFrNzk0dC1iY2JhZTY2ZS1hMGViLTRkYWItOTJiNi1kY2YwOWRhMGEyYmEucG5nIn1dXX0.ELaxFZISXbUj1c0ExOlsSwm2GWwG0C9Vib9tawSALiQ) Become a Patron!](https://www.patreon.com/user?u=28035928)
 
 an **S3** **R**ich **S**upport client
-- [Download executable](https://github.com/yanganto/s3rs/releases/download/v0.4.0/s3rs-v0.4.0-linux.zip), unzip and ready to go
+- [Download executable](https://github.com/yanganto/s3rs/releases/download/v0.6.6/s3rs-v0.6.6-linux.zip), unzip and ready to go
 - rust edition 2018
 - multi config (please put config files under `~/.config/s3rs`)
 - interactive command line tool
@@ -19,6 +17,7 @@ an **S3** **R**ich **S**upport client
 - support s3 config file encryption function v0.4.0
   - `s3rs -c ~/.config/s3rs/aws2.toml  -s 'the password you like' secret encrypt`
   - run s3rs with `-s` option or use `secret set <secret phrases or hexal literal>`
+- support multipart download
 
 ### How to use
 #### shell mode
