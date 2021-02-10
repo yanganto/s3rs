@@ -1,8 +1,17 @@
+#[cfg(feature = "async")]
+use std::path::Path;
+#[cfg(feature = "async")]
+use tokio::runtime::Runtime;
 use regex::Regex;
 use humansize::{FileSize, file_size_opts};
 
 use crate::logger::change_log_type;
 use colored::{self, *};
+#[cfg(feature = "async")]
+use s3handler::{
+    S3Object,
+    none_blocking::primitives::S3Pool
+};
 
 pub mod secret;
 
@@ -206,6 +215,30 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
             }
         };
     } else if command.starts_with("put") {
+        #[cfg(feature = "async")]
+        {
+            let mut rt = Runtime::new().unwrap();
+            let file_path = command.split_whitespace().nth(1).unwrap_or("");
+            let mut s3_object: S3Object = command.split_whitespace().nth(2).unwrap_or("").into();
+            if s3_object.key.is_none() {
+                s3_object.key = Some(
+                    Path::new(file_path)
+                    .file_name()
+                    .map(|s|format!("/{}",s.to_string_lossy())).unwrap_or_else(||"/".to_string())
+                    )
+            }
+            let s3_pool = S3Pool::from(&*handler);
+            rt.block_on(async {
+                match s3_pool
+                    .resource(s3_object)
+                    .upload_file(file_path).await {
+                        Err(e) => println!("{}", e),
+                        Ok(_) => println!("upload completed"),
+                };
+            });
+        }
+
+        #[cfg(not(feature = "async"))]
         match handler.put(
             command.split_whitespace().nth(1).unwrap_or(""),
             command.split_whitespace().nth(2).unwrap_or(""),
@@ -214,6 +247,29 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
             Ok(_) => println!("upload completed"),
         };
     } else if command.starts_with("get") {
+        #[cfg(feature = "async")]
+        {
+            let s3_pool = S3Pool::from(&*handler);
+            let s3_object: S3Object = command.split_whitespace().nth(1).unwrap_or("").into();
+            if s3_object.key.is_none() {
+                println!("please specify the object you want to download");
+                return;
+            }
+
+            let mut rt = Runtime::new().unwrap();
+            rt.block_on(
+                async {
+                    match s3_pool
+                        .resource(s3_object)
+                        .download_file(command.split_whitespace().nth(2).unwrap_or("")).await {
+                            Err(e) => println!("{}", e),
+                            Ok(_) => println!("download completed"),
+                    };
+                }
+            );
+        }
+
+        #[cfg(not(feature = "async"))]
         match handler.get(
             command.split_whitespace().nth(1).unwrap_or(""),
             command.split_whitespace().nth(2),

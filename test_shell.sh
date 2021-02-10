@@ -20,7 +20,13 @@ expect -re $prompt
 send ls\r
 
 expect -re $prompt
+send "log debug\r"
+
+expect -re $prompt
 send "put test s3://$bucket\r"
+
+expect -re $prompt
+send "log error\r"
 
 expect -re $prompt
 send "ls s3://$bucket\r"
@@ -79,8 +85,10 @@ send "get s3://$bucket/test-orig /tmp/test\r"
 expect -re $prompt
 send "exit\r"
 
+send "rm -f test\r"
+
 expect "cya~"
 spawn rm -f test
 spawn md5sum /tmp/test-orig /tmp/test
-
 interact
+spawn rm -f test

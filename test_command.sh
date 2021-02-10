@@ -9,6 +9,7 @@ set timeout 120
 
 spawn dd if=/dev/urandom bs=1024 count=7000 of=/tmp/7M
 spawn cargo build
+spawn cp README.md test
 
 expect $prompt
 spawn target/debug/s3rs --config=$config ls
@@ -65,4 +66,4 @@ expect $prompt
 spawn md5sum /tmp/7M /tmp/7
 
 interact
-
+spawn rm -f test
