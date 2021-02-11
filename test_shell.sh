@@ -9,6 +9,7 @@ set timeout 180
 
 spawn rm -f /tmp/test
 spawn rm -f /tmp/test-orig
+spawn cp README.md test
 spawn dd if=/dev/urandom bs=1024 count=11264 of=/tmp/test-orig
 spawn cargo run
 
@@ -79,6 +80,7 @@ expect -re $prompt
 send "exit\r"
 
 expect "cya~"
+spawn rm -f test
 spawn md5sum /tmp/test-orig /tmp/test
 
 interact

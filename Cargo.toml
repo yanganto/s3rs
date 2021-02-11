@@ -1,6 +1,6 @@
 [package]
 name = "s3rs"
-version = "0.4.5"
+version = "0.4.6"
 authors = ["Antonio Yang <yanganto@gmail.com>"]
 description = "A s3 cli client with multi configs with diffent provider"
 keywords = ["S3", "Amazon", "CEPH", "AWS"]
@@ -34,7 +34,7 @@ serde_json = "1.0"
 regex = "0.2"
 quick-xml = "0.12"
 colored = "1.6"
-s3handler = "0.6.6"
+s3handler = "0.7"
 clap = "2.33"
 hex = "0.4.2"
 blake2-rfc = "0.2"
