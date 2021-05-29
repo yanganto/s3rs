@@ -12,8 +12,8 @@ edition = "2018"
 
 [dependencies]
 dirs = "2.0"
-openssl = { version = "0.10", features = ["vendored"] }
-openssl-sys = { version = "0.9",  features = ["vendored"] }
+openssl = { version = "0.10" }
+openssl-sys = { version = "0.9" }
 failure = "0.1"
 interactor = "0.1"
 toml = "0.4"
@@ -44,6 +44,10 @@ tokio = { version = "0.2", optional = true }
 
 [features]
 default = ["async"]
+vendored = [
+    "openssl/vendored",
+    "openssl-sys/vendored"
+]
 async = [
     "s3handler/tokio-async",
     "tokio"
