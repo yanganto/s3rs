@@ -7,14 +7,13 @@
   let
     pkgs = nixpkgs.legacyPackages.x86_64-linux;
   in {
-    packages.x86_64-linux.s3rs-hello = pkgs.stdenv.mkDerivation {
-        name = "s3rs-hello";
+    packages.x86_64-linux.s3rs = pkgs.rustPlatform.buildRustPackage rec {
+        name = "s3rs";
         src = self;
-        installPhase = ''
-          mkdir -p $out/bin;
-          install -m755 example.sh $out/bin/s3rs-hello;
-        '';
+        cargoSha256 = "sha256-tpAbSX6e5nfxn5mwgngZX8I3cfkZFfbx+2Y5/Z1m0g4=";
+        nativeBuildInputs = with pkgs; [ python3 perl ];
+        buildInputs = with pkgs; [ openssl ];
     };
-    defaultPackage.x86_64-linux = self.packages.x86_64-linux.s3rs-hello;
+    defaultPackage.x86_64-linux = self.packages.x86_64-linux.s3rs;
   };
 }
