@@ -2,3 +2,4 @@ target
 s3rs
 *.zip
 .envrc
+.direnv/
