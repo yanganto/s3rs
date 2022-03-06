@@ -52,7 +52,7 @@ pub fn common_usage() -> String {
 {3} s3://{2}
     create bucket
 
-{4} s3://{2}
+{41} s3://{2}
     delete bucket
 
 {5} {6} s3://{2}/{7}
@@ -73,7 +73,7 @@ pub fn common_usage() -> String {
 {9} s3://{2}/{7}
     display the object content
 
-{10} s3://{2}/{7} [delete-marker:true]
+{10}/{4} s3://{2}/{7} [delete-marker:true]
     delete the object
 
 {29} {1}/{36} s3://{2}/{7}
@@ -161,7 +161,8 @@ pub fn common_usage() -> String {
         "usage".bold(),
         "info".bold(),
         "ll".bold(),
-        "<prefix>".cyan(), //40
+        "<prefix>".cyan(),
+        "rb".bold(), //41
     );
     usage
 }

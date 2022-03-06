@@ -82,7 +82,7 @@ an **S3** **R**ich **S**upport client
 |-------------------------------|------------------------------------------|
 | s3\_type [ceph/aws/aws4/aws2] | change setting for different S3 provider |
 | format [xml/json]             | change the format client request         |
-| log [trace/debug/info/erro]   | change the log level                     |
+| log [trace/debug/info/error]  | change the log level                     |
 |                               | - Info : for Http header and body        |
 |                               | - debug: for auth signature hash info    |
 |                               | - trace: more detail about rust          |
@@ -111,7 +111,7 @@ Additional package for ubuntu
 It is easy to install s3rs via cargo as following command.
 - `cargo install s3rs`
 
-Set up the path for rust binnary
+Set up the path for rust binary
 - `export PATH=$PATH:~/.cargo/bin`
 
 The config file will auto setup when binary first time launch
