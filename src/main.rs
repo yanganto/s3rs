@@ -66,27 +66,28 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
     Ok(idx)
 }
 
-fn cli() -> ArgMatches<'static> {
+fn cli() -> ArgMatches {
+    let usage = common_usage();
     App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .arg(
             Arg::with_name("config")
-                .short("c")
+                .short('c')
                 .long("config")
                 .value_name("S3RS CONFIGURE")
                 .help("set the name of config file under ~/.config/s3rs, or a config file with fullpath")
         )
-		.arg(
+        .arg(
             Arg::with_name("secret")
-                .short("s")
+                .short('s')
                 .long("secret")
                 .value_name("Runtime Secret")
                 .help("Set the run time secret to encrypt/decrept your s3config file")
-		)
+        )
         .arg(
-            Arg::from_usage("<s3rs cmd>...").help(&common_usage()).requires("config").required(false)
+            Arg::from_usage("<s3rs cmd>...").help(Some(usage.as_ref())).requires("config").required(false)
         )
         .get_matches()
 }

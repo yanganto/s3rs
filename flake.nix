@@ -2,18 +2,41 @@
   description = "A s3 client written in Rust";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  outputs = { self, nixpkgs }:
-  let
-    pkgs = nixpkgs.legacyPackages.x86_64-linux;
-  in {
-    packages.x86_64-linux.s3rs = pkgs.rustPlatform.buildRustPackage rec {
-        name = "s3rs";
-        src = self;
-        cargoSha256 = "sha256-tpAbSX6e5nfxn5mwgngZX8I3cfkZFfbx+2Y5/Z1m0g4=";
-        nativeBuildInputs = with pkgs; [ python3 perl ];
-        buildInputs = with pkgs; [ openssl ];
-    };
-    defaultPackage.x86_64-linux = self.packages.x86_64-linux.s3rs;
-  };
+  outputs = { self, rust-overlay, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+        rust = pkgs.rust-bin.stable.latest.default;
+        updateDependencyScript = pkgs.writeShellScriptBin "update-dependency" ''
+          cargo install dependency-refresh
+          dr ./Cargo.toml
+          if [ -f "Cargo.toml.old" ]; then
+            rm Cargo.toml.old
+            exit 1
+          fi
+        '';
+        publishScript = pkgs.writeShellScriptBin "crate-publish" ''
+          cargo login $1
+          cargo publish
+        '';
+      in
+      with pkgs;
+      {
+        devShell = mkShell {
+          buildInputs = [
+            openssl
+            pkg-config
+            rust
+            publishScript
+            updateDependencyScript
+          ];
+        };
+      }
+    );
 }

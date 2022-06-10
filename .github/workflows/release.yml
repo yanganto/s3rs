@@ -1,0 +1,27 @@
+name: Rust Crate Release
+
+concurrency:
+  group: rust-crate-release-${{ github.head_ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  crate_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@v15
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Publish Crate
+        run: nix develop -c 'crate-publish' ${{ secrets.CARGO_REGISTRY_TOKEN }}
