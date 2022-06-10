@@ -316,11 +316,11 @@ fn xor_by_secret(secret_generator: &mut SecretGenerator, target: Vec<u8>) -> Str
     let mut target = target;
     let mut mixed_target = vec![128];
     mixed_target.append(&mut target);
-    mixed_target.rotate_left(rng.gen_range(0, target_len));
+    mixed_target.rotate_left(rng.gen_range(0..target_len));
 
     if mixed_target.len() < 256 {
         for _ in 0..(256 - mixed_target.len()) {
-            let r = rng.gen_range(0, mixed_target.len());
+            let r = rng.gen_range(0..mixed_target.len());
             mixed_target.insert(r, *FILTER.iter().nth(r % FILTER.len()).unwrap());
         }
     }
