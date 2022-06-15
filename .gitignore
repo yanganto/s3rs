@@ -3,3 +3,4 @@ s3rs
 *.zip
 .envrc
 .direnv/
+result/
