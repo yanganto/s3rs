@@ -1,5 +1,6 @@
 use humansize::{file_size_opts, FileSize};
 use regex::Regex;
+use std::error::Error;
 #[cfg(feature = "async")]
 use std::path::Path;
 #[cfg(feature = "async")]
@@ -15,7 +16,7 @@ pub mod secret;
 static S3_FORMAT: &'static str =
     r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
 
-fn print_if_error(result: Result<(), failure::Error>) {
+fn print_if_error(result: Result<(), Box<dyn Error>>) {
     match result {
         Err(e) => println!("{}", e),
         Ok(_) => {}

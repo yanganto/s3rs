@@ -1,6 +1,6 @@
 [package]
 name = "s3rs"
-version = "0.4.10"
+version = "0.4.11"
 authors = ["Antonio Yang <yanganto@gmail.com>"]
 description = "A s3 cli client with multi configs with diffent provider"
 keywords = ["S3", "Amazon", "CEPH", "AWS"]
@@ -14,7 +14,6 @@ edition = "2018"
 dirs = "4.0.0"
 openssl = { version = "0.10" }
 openssl-sys = { version = "0.9" }
-failure = "0.1"
 interactor = "0.1"
 toml = "0.5.9"
 serde = "1.0"
@@ -34,7 +33,7 @@ serde_json = "1.0"
 regex = "1.5"
 quick-xml = "0.23.0"
 colored = "2.0.0"
-s3handler = "0.7.6"
+s3handler = "0.8.0"
 clap = "3.1.18"
 hex = "0.4.2"
 blake2-rfc = "0.2"
