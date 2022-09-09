@@ -832,6 +832,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "678404d55890514fa1c01fe98cf280b674db93944fdcb70310dd3be1d0d63be7"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1042,7 +1051,7 @@ dependencies = [
  "log",
  "md5",
  "mime_guess",
- "quick-xml",
+ "quick-xml 0.23.0",
  "regex",
  "reqwest",
  "rustc-serialize",
@@ -1057,7 +1066,7 @@ dependencies = [
 
 [[package]]
 name = "s3rs"
-version = "0.4.11"
+version = "0.4.12"
 dependencies = [
  "base64",
  "blake2-rfc",
@@ -1076,7 +1085,7 @@ dependencies = [
  "md5",
  "openssl",
  "openssl-sys",
- "quick-xml",
+ "quick-xml 0.24.0",
  "rand 0.8.5",
  "regex",
  "rust-crypto",

@@ -13,7 +13,7 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
-        rust = pkgs.rust-bin.stable.latest.default;
+        rust = pkgs.rust-bin.nightly."2022-09-09".default;
         dr = dependency-refresh.defaultPackage.${system};
         updateDependencyScript = pkgs.writeShellScriptBin "update-dependency" ''
           dr ./Cargo.toml
@@ -32,7 +32,7 @@
         packages.${system}.s3rs = pkgs.rustPlatform.buildRustPackage {
           name = "s3rs";
           src = self;
-          cargoSha256 = "sha256-C1grX+H3Kh09IvhRKvQofapcuupuT9XLKW5PLgsR/e8=";
+          cargoSha256 = "sha256-PgcVTUZItay9QfGxwrvcBgOZFZovAOkMYs1IGCW/awM=";
           buildInputs = [ openssl ];
           nativeBuildInputs = [ pkg-config ];
         };
