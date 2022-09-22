@@ -32,7 +32,7 @@ jobs:
         with:
           add-paths: Cargo.toml
           reviewers: yanganto
-          base: main
+          base: master
           branch: dependency-update
           branch-suffix: timestamp
           title: "Dependency Update"
