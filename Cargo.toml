@@ -31,14 +31,14 @@ log = "0.4"
 md5 = "0.7.0"
 serde_json = "1.0"
 regex = "1.5"
-quick-xml = "0.24.0"
+quick-xml = "0.25.0"
 colored = "2.0.0"
 s3handler = "0.8.0"
 clap = "3.1.18"
 hex = "0.4.2"
 blake2-rfc = "0.2"
 rand = "0.8.5"
-humansize = "1.1"
+humansize = "2.0"
 tokio = { version = "1", optional = true }
 
 [features]

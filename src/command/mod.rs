@@ -1,4 +1,4 @@
-use humansize::{file_size_opts, FileSize};
+use humansize::{make_format_i, DECIMAL};
 use regex::Regex;
 use std::error::Error;
 #[cfg(feature = "async")]
@@ -192,6 +192,7 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
             Some(b) => handler.ls(Some(b)),
             None => handler.la(),
         };
+        let size_formatter = make_format_i(DECIMAL);
         match r {
             Err(e) => println!("{}", e),
             Ok(v) => {
@@ -208,7 +209,7 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
                             .clone()
                             .unwrap_or("                                 ".to_string()),
                         o.size
-                            .map(|s| s.file_size(file_size_opts::CONVENTIONAL).unwrap())
+                            .map(|s| size_formatter(s))
                             .unwrap_or_else(|| "".to_string()),
                         String::from(o)
                     );
