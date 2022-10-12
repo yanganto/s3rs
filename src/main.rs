@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
-extern crate clap;
-#[macro_use]
 extern crate log;
 
 use std::fs::{create_dir, read_dir, File, OpenOptions};
@@ -12,12 +10,12 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::str;
 use std::str::FromStr;
 
-use clap::{App, Arg, ArgMatches};
 use colored::{self, *};
 use dirs::home_dir;
 use log::LevelFilter;
+use structopt::StructOpt;
 
-use command::{common_usage, do_command, secret};
+use command::{do_command, secret, Cli, S3rsCmd};
 use config::Config;
 use logger::Logger;
 
@@ -66,47 +64,21 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
     Ok(idx)
 }
 
-fn cli() -> ArgMatches {
-    let usage = common_usage();
-    App::new(env!("CARGO_PKG_NAME"))
-        .version(env!("CARGO_PKG_VERSION"))
-        .author(env!("CARGO_PKG_AUTHORS"))
-        .about(env!("CARGO_PKG_DESCRIPTION"))
-        .arg(
-            Arg::with_name("config")
-                .short('c')
-                .long("config")
-                .value_name("S3RS CONFIGURE")
-                .help("set the name of config file under ~/.config/s3rs, or a config file with fullpath")
-        )
-        .arg(
-            Arg::with_name("secret")
-                .short('s')
-                .long("secret")
-                .value_name("Runtime Secret")
-                .help("Set the run time secret to encrypt/decrept your s3config file")
-        )
-        .arg(
-            Arg::from_usage("<s3rs cmd>...").help(Some(usage.as_ref())).requires("config").required(false)
-        )
-        .get_matches()
-}
-
-fn main() {
+fn main() -> io::Result<()> {
     log::set_logger(&MY_LOGGER).unwrap();
     log::set_max_level(LevelFilter::Warn);
 
     let mut run_time_secret: Vec<u8> = Vec::new();
-    let matches = cli();
-    if let Some(s) = matches.value_of("secret") {
+    let mut matches = Cli::from_args();
+    if let Some(s) = matches.secret {
         secret::change_secret(&mut run_time_secret, s.to_string(), false);
     }
 
     let mut config_contents = String::new();
     let interactive: bool;
     let s3rs_config_foler = home_dir().unwrap().join(S3RS_CONFIG_FOLDER); // used > v0.2.3
-    match matches.value_of("config") {
-        Some(path) => {
+    match matches.config {
+        Some(ref path) => {
             let mut config_path = path.to_string();
             if s3rs_config_foler.exists() {
                 for entry in read_dir(s3rs_config_foler).unwrap() {
@@ -153,7 +125,7 @@ fn main() {
                     "Example files is created in {}, multiple toml files can put under this folder",
                     "~/.config/s3rs".bold()
                 );
-                return;
+                return Ok(());
             }
 
             if config_contents == "" {
@@ -161,7 +133,7 @@ fn main() {
                     "{}",
                     "Lack of config files please put in ~/.config/s3rs".bold()
                 );
-                return;
+                return Ok(());
             }
             interactive = true;
         }
@@ -191,7 +163,7 @@ fn main() {
             .clone()
             .unwrap_or("aws".to_string());
 
-        if matches.value_of("config").is_none() {
+        if matches.config.is_none() {
             println!(
                 "enter command, type {} for usage or type {} for quit",
                 "help".bold(),
@@ -199,27 +171,8 @@ fn main() {
             );
         };
 
-        let mut command = match values_t!(matches, "s3rs cmd", String) {
-            Ok(cmds) => cmds.join(" "),
-            Err(_) => String::new(),
-        };
-
-        while command != "exit" && command != "quit" {
-            if command.starts_with("logout") {
-                reload_config = true;
-                break;
-            } else if command.starts_with("secret") {
-                let mut command = command.strip_prefix("secret").unwrap().trim().to_string();
-                secret::do_command(&mut run_time_secret, &mut command, &config_list, chosen_int)
-            } else {
-                do_command(&mut handler, &s3_type, &mut command);
-            }
-
-            if !interactive {
-                break;
-            }
-
-            command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
+        while matches.s3rs_cmd != Some(S3rsCmd::Quit) {
+            let command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
                 Ok(mut tty) => {
                     tty.flush().expect("Could not open tty");
                     let _ = tty.write_all(
@@ -235,9 +188,31 @@ fn main() {
                     "quit".to_string()
                 }
             };
-
-            println!("");
             stdout().flush().expect("Could not flush stdout");
+
+            if command.starts_with("logout") {
+                reload_config = true;
+                break;
+            } else if command.starts_with("secret") {
+                let mut command = command.strip_prefix("secret").unwrap().trim().to_string();
+                secret::do_command(&mut run_time_secret, &mut command, &config_list, chosen_int)
+            } else if command.starts_with("exit") || command.starts_with("quit") {
+                matches.s3rs_cmd = Some(S3rsCmd::Quit);
+            } else {
+                matches.s3rs_cmd = if command.starts_with('/') {
+                    Some(S3rsCmd::Query { url: command })
+                } else {
+                    let mut new_s3_cmd = vec![""];
+                    new_s3_cmd.append(&mut command.split_whitespace().collect());
+                    S3rsCmd::from_iter_safe(new_s3_cmd).ok()
+                };
+                do_command(&mut handler, &s3_type, matches.s3rs_cmd.take());
+            }
+
+            if !interactive {
+                break;
+            }
         }
     }
+    Ok(())
 }
