@@ -32,7 +32,7 @@
         packages.${system}.s3rs = pkgs.rustPlatform.buildRustPackage {
           name = "s3rs";
           src = self;
-          cargoSha256 = "sha256-9pNNEDwwL5CMKZq9RbMK9p32OsiurUtXTq7h5iLovk8=";
+          cargoSha256 = "sha256-5XMZoOk940Kcth2hnPAquD5ce8bms6aKj/g8bYmlxLM=";
           buildInputs = [ openssl ];
           nativeBuildInputs = [ pkg-config ];
         };
