@@ -1077,12 +1077,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc-serialize"
-version = "0.3.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-
-[[package]]
 name = "ryu"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1090,9 +1084,9 @@ checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
 
 [[package]]
 name = "s3handler"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fbc7a03609ecbff0dd9c7d398f3b30f77882f6076588ef68a89d9392dde8204"
+checksum = "a7a99be4d8bfddd90f22efc3b470ccd9e728eac22422f3bb3405fac457cef902"
 dependencies = [
  "async-trait",
  "base64",
@@ -1109,7 +1103,6 @@ dependencies = [
  "quick-xml 0.23.1",
  "regex",
  "reqwest",
- "rustc-serialize",
  "serde",
  "serde_derive",
  "serde_json",
