@@ -75,7 +75,7 @@ fn main() -> io::Result<()> {
     }
 
     let mut config_contents = String::new();
-    let interactive: bool;
+    let mut interactive: bool;
     let s3rs_config_foler = home_dir().unwrap().join(S3RS_CONFIG_FOLDER); // used > v0.2.3
     match matches.config {
         Some(ref path) => {
@@ -93,6 +93,8 @@ fn main() -> io::Result<()> {
             f.read_to_string(&mut config_contents)
                 .expect("cannot read file");
             interactive = false;
+            let args: Vec<String> = std::env::args().collect();
+            matches.s3rs_cmd = S3rsCmd::from_iter_safe(args[1..].iter()).ok();
         }
         None => {
             let legacy_s3rs_config = home_dir().unwrap().join(".s3rs.toml"); // used < v0.2.2
@@ -171,8 +173,27 @@ fn main() -> io::Result<()> {
             );
         };
 
+        let mut command = String::new();
         while matches.s3rs_cmd != Some(S3rsCmd::Quit) {
-            let command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
+            stdout().flush().expect("Could not flush stdout");
+
+            if command.starts_with("logout") {
+                reload_config = true;
+                break;
+            } else if command.starts_with("secret") {
+                let mut command = command.strip_prefix("secret").unwrap().trim().to_string();
+                secret::do_command(&mut run_time_secret, &mut command, &config_list, chosen_int)
+            } else if command.starts_with("exit") || command.starts_with("quit") {
+                interactive = false;
+            } else {
+                do_command(&mut handler, &s3_type, matches.s3rs_cmd.take());
+            }
+
+            if !interactive {
+                break;
+            }
+
+            command = match OpenOptions::new().read(true).write(true).open("/dev/tty") {
                 Ok(mut tty) => {
                     tty.flush().expect("Could not open tty");
                     let _ = tty.write_all(
@@ -188,30 +209,16 @@ fn main() -> io::Result<()> {
                     "quit".to_string()
                 }
             };
-            stdout().flush().expect("Could not flush stdout");
 
-            if command.starts_with("logout") {
-                reload_config = true;
-                break;
-            } else if command.starts_with("secret") {
-                let mut command = command.strip_prefix("secret").unwrap().trim().to_string();
-                secret::do_command(&mut run_time_secret, &mut command, &config_list, chosen_int)
-            } else if command.starts_with("exit") || command.starts_with("quit") {
-                matches.s3rs_cmd = Some(S3rsCmd::Quit);
+            matches.s3rs_cmd = if command.starts_with('/') {
+                Some(S3rsCmd::Query {
+                    url: command.clone(),
+                })
             } else {
-                matches.s3rs_cmd = if command.starts_with('/') {
-                    Some(S3rsCmd::Query { url: command })
-                } else {
-                    let mut new_s3_cmd = vec![""];
-                    new_s3_cmd.append(&mut command.split_whitespace().collect());
-                    S3rsCmd::from_iter_safe(new_s3_cmd).ok()
-                };
-                do_command(&mut handler, &s3_type, matches.s3rs_cmd.take());
-            }
-
-            if !interactive {
-                break;
-            }
+                let mut new_s3_cmd = vec![""];
+                new_s3_cmd.append(&mut command.split_whitespace().collect());
+                S3rsCmd::from_iter_safe(new_s3_cmd).ok()
+            };
         }
     }
     Ok(())

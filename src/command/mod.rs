@@ -534,7 +534,6 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
         Some(S3rsCmd::Log(t)) => {
             change_log_type(&t);
         }
-        Some(S3rsCmd::Logout) | Some(S3rsCmd::Quit) => (), // handle in main loop
-        None => println!("command not found, help for usage or exit for quit"),
+        None | Some(S3rsCmd::Logout) | Some(S3rsCmd::Quit) => (), // handle in main loop
     }
 }
