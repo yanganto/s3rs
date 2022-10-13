@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::process::Command;
 
 use humansize::{make_format_i, DECIMAL};
 use regex::Regex;
@@ -169,6 +170,9 @@ error is default
 
     #[structopt(name = "quit/exit", about = "quit the programe")]
     Quit,
+
+    #[structopt(name = "help", about = "show s3 command usage")]
+    Help,
 }
 
 #[derive(StructOpt, PartialEq, Debug)]
@@ -268,10 +272,6 @@ impl Into<&'static str> for UrlStyle {
         }
     }
 }
-
-// XXX show in shell
-// help
-//     show this usage
 
 fn print_if_error(result: Result<(), Box<dyn Error>>) {
     match result {
@@ -535,5 +535,26 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
             change_log_type(&t);
         }
         None | Some(S3rsCmd::Logout) | Some(S3rsCmd::Quit) => (), // handle in main loop
+        Some(S3rsCmd::Help) => {
+            let c = Command::new(
+                std::env::args()
+                    .nth(0)
+                    .expect("fail to get execute program"),
+            )
+            .args(["-h"])
+            .output()
+            .expect("failed to execute program for usage");
+            let usage = unsafe { std::str::from_utf8_unchecked(&c.stdout) };
+            let mut after_match = false;
+            let re = Regex::new("SUBCOMMANDS:").unwrap();
+            for line in usage.split("\n") {
+                if after_match {
+                    println!("{}", line);
+                }
+                if !after_match && re.is_match(line) {
+                    after_match = true;
+                }
+            }
+        }
     }
 }
