@@ -10,10 +10,11 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::str;
 use std::str::FromStr;
 
+use clap::{CommandFactory, Parser};
 use colored::{self, *};
 use dirs::home_dir;
 use log::LevelFilter;
-use structopt::StructOpt;
+use regex::Regex;
 
 use command::{do_command, secret, Cli, S3rsCmd};
 use config::Config;
@@ -69,7 +70,7 @@ fn main() -> io::Result<()> {
     log::set_max_level(LevelFilter::Warn);
 
     let mut run_time_secret: Vec<u8> = Vec::new();
-    let mut matches = Cli::from_args();
+    let mut matches = Cli::parse();
     if let Some(s) = matches.secret {
         secret::change_secret(&mut run_time_secret, s.to_string(), false);
     }
@@ -94,7 +95,7 @@ fn main() -> io::Result<()> {
                 .expect("cannot read file");
             interactive = false;
             let args: Vec<String> = std::env::args().collect();
-            matches.s3rs_cmd = S3rsCmd::from_iter_safe(args[1..].iter()).ok();
+            matches.s3rs_cmd = Some(S3rsCmd::parse_from(args[1..].iter()));
         }
         None => {
             let legacy_s3rs_config = home_dir().unwrap().join(".s3rs.toml"); // used < v0.2.2
@@ -214,10 +215,32 @@ fn main() -> io::Result<()> {
                 Some(S3rsCmd::Query {
                     url: command.clone(),
                 })
+            } else if command.starts_with("help") {
+                let mut usage = Vec::<u8>::new();
+                let mut command = <S3rsCmd as CommandFactory>::command();
+                command
+                    .write_help(&mut usage)
+                    .expect("fail to get help of program");
+                let usage = unsafe { std::str::from_utf8_unchecked(&usage) };
+                let mut after_match = false;
+                let re = Regex::new("Commands:").unwrap();
+                let option_re = Regex::new("Options:").unwrap();
+                for line in usage.split("\n") {
+                    if option_re.is_match(line) {
+                        break;
+                    }
+                    if after_match {
+                        println!("{}", line);
+                    }
+                    if !after_match && re.is_match(line) {
+                        after_match = true;
+                    }
+                }
+                None
             } else {
                 let mut new_s3_cmd = vec![""];
                 new_s3_cmd.append(&mut command.split_whitespace().collect());
-                S3rsCmd::from_iter_safe(new_s3_cmd).ok()
+                S3rsCmd::try_parse_from(new_s3_cmd).ok()
             };
         }
     }

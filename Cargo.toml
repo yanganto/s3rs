@@ -33,7 +33,7 @@ regex = "1.5"
 quick-xml = "0.25.0"
 colored = "2.0.0"
 s3handler = "0.8.1"
-structopt = "0.3.26"
+clap = { version =  "4.0.14", features = ["derive"]}
 hex = "0.4.2"
 blake2-rfc = "0.2"
 rand = "0.8.5"
