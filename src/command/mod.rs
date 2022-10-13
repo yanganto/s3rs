@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::process::Command;
 
 use humansize::{make_format_i, DECIMAL};
 use regex::Regex;
@@ -536,15 +535,11 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
         }
         None | Some(S3rsCmd::Logout) | Some(S3rsCmd::Quit) => (), // handle in main loop
         Some(S3rsCmd::Help) => {
-            let c = Command::new(
-                std::env::args()
-                    .nth(0)
-                    .expect("fail to get execute program"),
-            )
-            .args(["-h"])
-            .output()
-            .expect("failed to execute program for usage");
-            let usage = unsafe { std::str::from_utf8_unchecked(&c.stdout) };
+            let mut usage = Vec::<u8>::new();
+            let app = <S3rsCmd as StructOpt>::clap();
+            app.write_help(&mut usage)
+                .expect("fail to get help of program");
+            let usage = unsafe { std::str::from_utf8_unchecked(&usage) };
             let mut after_match = false;
             let re = Regex::new("SUBCOMMANDS:").unwrap();
             for line in usage.split("\n") {
