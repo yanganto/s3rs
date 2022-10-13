@@ -1,7 +1,16 @@
 use colored::{self, *};
 use log::{Level, LevelFilter, Metadata, Record};
+use structopt::StructOpt;
 
 pub struct Logger;
+
+#[derive(StructOpt, PartialEq, Debug)]
+pub enum LogType {
+    Trace,
+    Debug,
+    Info,
+    Error,
+}
 
 impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
@@ -22,20 +31,23 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-pub fn change_log_type(command: &str) {
-    if command.ends_with("trace") {
-        log::set_max_level(LevelFilter::Trace);
-        println!("set up log level trace");
-    } else if command.ends_with("debug") {
-        log::set_max_level(LevelFilter::Debug);
-        println!("set up log level debug");
-    } else if command.ends_with("info") {
-        log::set_max_level(LevelFilter::Info);
-        println!("set up log level info");
-    } else if command.ends_with("error") {
-        log::set_max_level(LevelFilter::Error);
-        println!("set up log level error");
-    } else {
-        println!("usage: log [trace/debug/info/error]");
+pub fn change_log_type(t: &LogType) {
+    match t {
+        LogType::Trace => {
+            log::set_max_level(LevelFilter::Trace);
+            println!("set up log level trace");
+        }
+        LogType::Info => {
+            log::set_max_level(LevelFilter::Info);
+            println!("set up log level info");
+        }
+        LogType::Debug => {
+            log::set_max_level(LevelFilter::Debug);
+            println!("set up log level debug");
+        }
+        LogType::Error => {
+            log::set_max_level(LevelFilter::Error);
+            println!("set up log level error");
+        }
     }
 }

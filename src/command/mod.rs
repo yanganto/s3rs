@@ -1,20 +1,277 @@
+use std::error::Error;
+use std::process::Command;
+
 use humansize::{make_format_i, DECIMAL};
 use regex::Regex;
-use std::error::Error;
 #[cfg(feature = "async")]
 use std::path::Path;
 #[cfg(feature = "async")]
 use tokio::runtime::Runtime;
 
-use crate::logger::change_log_type;
+use crate::logger::{change_log_type, LogType};
 use colored::{self, *};
 #[cfg(feature = "async")]
 use s3handler::{none_blocking::primitives::S3Pool, S3Object};
+use structopt::StructOpt;
 
 pub mod secret;
 
 static S3_FORMAT: &'static str =
     r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "s3rs")]
+pub struct Cli {
+    /// Set the name of config file under ~/.config/s3rs, or a config file with fullpath
+    #[structopt(short = "c", long)]
+    pub(crate) config: Option<String>,
+
+    /// Set the run time secret to encrypt/decrept your s3config file
+    #[structopt(short = "s", long)]
+    pub(crate) secret: Option<String>,
+
+    #[structopt(subcommand)]
+    pub s3rs_cmd: Option<S3rsCmd>,
+}
+
+#[derive(StructOpt, PartialEq, Debug)]
+#[structopt()]
+pub enum S3rsCmd {
+    #[structopt(name = "la", about = "list all buckets")]
+    ListAll,
+
+    #[structopt(
+        name = "ls",
+        about = r#"list all buckets, or
+list all objects of the bucket, or
+    ls s3://<bucket>
+list objects with prefix in the bucket
+    ls s3://<bucket>/<prefix>"#
+    )]
+    List { uri: Option<String> },
+
+    #[structopt(
+        name = "ll",
+        about = r#"list all object detail, or
+list all objects detail of the bucket, or
+    ll s3://<bucket>
+list detail of the objects with prefix in the bucket
+    ls s3://<bucket>/<prefix>"#
+    )]
+    Detail { uri: Option<String> },
+
+    #[structopt(
+        name = "mb",
+        about = r#"create bucket
+    mb s3://<bucket>"#
+    )]
+    CreateBucket { bucket: String },
+
+    #[structopt(
+        name = "rb",
+        about = r#"delete bucket
+    rb s3://<bucket>"#
+    )]
+    DeleteBucket { bucket: String },
+
+    #[structopt(about = r#"upload the file with specify object name
+    put <file> s3://<bucket>/<object>
+upload the file as the same file name
+    put <file> s3://<bucket>
+upload a small test text file with specify object name
+    put test s3://<bucket>/<object>"#)]
+    Put { file: String, uri: String },
+
+    #[structopt(about = r#"download the object
+    get s3://<bucket>/<object> <file>
+download the object to current folder
+    get s3://<bucket>/<object>
+upload a small test text file with specify object name
+    put test s3://<bucket>/<object>"#)]
+    Get { uri: String, file: Option<String> },
+
+    #[structopt(about = r#"display the object content
+    cat s3://<bucket>/<object>"#)]
+    Cat { uri: String },
+
+    #[structopt(about = r#"delete the object with/out delete marker
+    del s3://<bucket>/<object> [delete-marker:true]"#)]
+    Del { uri: String, marker: Option<String> },
+
+    #[structopt(about = r#"delete the object with/out delete marker
+    rm s3://<bucket>/<object> [delete-marker:true]"#)]
+    Rm { uri: String, marker: Option<String> },
+
+    #[structopt(about = r#"tag operations
+list tags of the object
+    tag ls/list s3://<bucket>/<object>
+add tags to the object
+    tag add/put s3://<bucket>/<object>  <key>=<value> ...
+remove tags from the object
+    tag del/rm s3://<bucket>/<object>"#)]
+    Tag {
+        action: TagAction,
+        uri: String,
+        tags: Vec<String>,
+    },
+
+    #[structopt(
+        name = "/",
+        about = r#"get uri command
+    /<uri>?<query string>"#
+    )]
+    Query { url: String },
+
+    #[structopt(about = r#"change the log level
+trace for every thing including request auth detail
+debug for request header, status code, raw body
+info for request http response
+error is default
+    log trace/trace/debug/info/error"#)]
+    Log(LogType),
+
+    #[structopt(
+        name = "s3_type",
+        about = r#"change the auth type and format for different S3 service
+    s3_type aws/ceph"#
+    )]
+    S3Type(S3Type),
+
+    #[structopt(
+        name = "auth_type",
+        about = r#"change the auth type
+    auth_type aws2/aws4"#
+    )]
+    AuthType(AuthType),
+
+    #[structopt(about = r#"change the request format
+    format xml/json"#)]
+    Format(AuthType),
+
+    #[structopt(about = r#"change the request url style
+    url-style path/host"#)]
+    UrlStyle(AuthType),
+
+    #[structopt(name = "logout/Ctrl + d", about = "logout and reselect account")]
+    Logout,
+
+    #[structopt(about = r#"show the usage of the bucket (ceph admin only)
+    usage s3://<bucket>"#)]
+    Usage {
+        bucket: String,
+        options: Option<String>,
+    },
+
+    #[structopt(
+        about = r#"show following the bucket information, acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph)
+    info s3://<bucket>"#
+    )]
+    Info { bucket: String },
+
+    #[structopt(name = "quit/exit", about = "quit the programe")]
+    Quit,
+
+    #[structopt(name = "help", about = "show s3 command usage")]
+    Help,
+}
+
+#[derive(StructOpt, PartialEq, Debug)]
+pub enum TagAction {
+    List,
+    Add,
+    Delete,
+}
+
+impl std::str::FromStr for TagAction {
+    type Err = Box<dyn std::error::Error>;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "list" | "ls" => Ok(TagAction::List),
+            "add" | "put" => Ok(TagAction::Add),
+            "del" | "rm" => Ok(TagAction::Delete),
+            _ => {
+                println!("only support these tag actions: list, ls, add, put, del, rm");
+                Err("Unknown tag action".into())
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for TagAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TagAction::List => {
+                write!(f, "list tag")
+            }
+            TagAction::Add => {
+                write!(f, "add tag")
+            }
+            TagAction::Delete => {
+                write!(f, "delete tag")
+            }
+        }
+    }
+}
+
+#[derive(StructOpt, PartialEq, Debug)]
+pub enum S3Type {
+    AWS,
+    CEPH,
+}
+
+impl Into<&'static str> for S3Type {
+    fn into(self) -> &'static str {
+        match self {
+            Self::AWS => "aws",
+            Self::CEPH => "ceph",
+        }
+    }
+}
+
+#[derive(StructOpt, PartialEq, Debug)]
+pub enum AuthType {
+    AWS2,
+    AWS4,
+}
+
+impl Into<&'static str> for AuthType {
+    fn into(self) -> &'static str {
+        match self {
+            Self::AWS2 => "aws2",
+            Self::AWS4 => "aws4",
+        }
+    }
+}
+
+#[derive(StructOpt, PartialEq, Debug)]
+pub enum FormatType {
+    XML,
+    JSON,
+}
+
+impl Into<&'static str> for FormatType {
+    fn into(self) -> &'static str {
+        match self {
+            Self::XML => "xml",
+            Self::JSON => "json",
+        }
+    }
+}
+
+#[derive(StructOpt, PartialEq, Debug)]
+pub enum UrlStyle {
+    Path,
+    Host,
+}
+
+impl Into<&'static str> for UrlStyle {
+    fn into(self) -> &'static str {
+        match self {
+            Self::Path => "path",
+            Self::Host => "host",
+        }
+    }
+}
 
 fn print_if_error(result: Result<(), Box<dyn Error>>) {
     match result {
@@ -23,152 +280,10 @@ fn print_if_error(result: Result<(), Box<dyn Error>>) {
     };
 }
 
-pub fn common_usage() -> String {
-    let usage = format!(
-        r#"
-{0}
-    list all objects
-
-{1}
-    list all buckets
-
-{1} s3://{2}
-    list all objects of the bucket
-
-{1} s3://{2}/{40}
-    list objects with prefix in the bucket
-
-{39}
-    list all object detail
-
-{39} s3://{2}
-    list all objects detail of the bucket
-
-{39} s3://{2}/{40}
-    list detail of the objects with prefix in the bucket
-
-{3} s3://{2}
-    create bucket
-
-{41} s3://{2}
-    delete bucket
-
-{5} {6} s3://{2}/{7}
-    upload the file with specify object name
-
-{5} {6} s3://{2}
-    upload the file as the same file name
-
-{5} test s3://{2}/{7}
-    upload a small test text file with specify object name
-
-{8} s3://{2}/{7} {6}
-    download the object
-
-{8} s3://{2}/{7}
-    download the object to current folder
-
-{9} s3://{2}/{7}
-    display the object content
-
-{10}/{4} s3://{2}/{7} [delete-marker:true]
-    delete the object
-
-{29} {1}/{36} s3://{2}/{7}
-    list tags of the object
-
-{29} {33}/{5} s3://{2}/{7}  {30}={31} ...
-    add tags to the object
-
-{29} {10}/{4} s3://{2}/{7}
-    remove tags from the object
-
-/{11}?{12}
-    get uri command
-
-{13}
-    show this usage
-
-{14} {32}/{15}/{16}/{17}/{18}
-    change the log level
-    {32} for every thing
-    {15} for request auth detail
-    {16} for request header, status code, raw body
-    {17} for request http response
-    {18} is default
-
-{19} {20}/{21}
-    change the auth type and format for different S3 service
-
-{22} {23}/{24}
-    change the auth type
-
-{25} {26}/{27}
-    change the request format
-
-{28}
-    quit the programe
-
-{34} / {35}
-    logout and reselect account
-
-{37} s3://{2}
-    show the usage of the bucket (ceph admin only)
-
-{38} s3://{2} / {38} {2}
-    show the bucket information
-    acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph)
-    "#,
-        "la".bold(),
-        "ls".bold(),
-        "<bucket>".cyan(),
-        "mb".bold(),
-        "rm".bold(),
-        "put".bold(),
-        "<file>".cyan(),
-        "<object>".cyan(),
-        "get".bold(),
-        "cat".bold(),
-        "del".bold(),
-        "<uri>".cyan(),
-        "<query string>".cyan(),
-        "help".bold(),
-        "log".bold(),
-        "trace".blue(),
-        "debug".blue(),
-        "info".blue(),
-        "error".blue(),
-        "s3_type".bold(),
-        "aws".blue(),
-        "ceph".blue(),
-        "auth_type".bold(),
-        "aws2".blue(),
-        "aws4".blue(),
-        "format".bold(),
-        "xml".blue(),
-        "json".blue(),
-        "exit".bold(),
-        "tag".bold(),
-        "<key>".cyan(),
-        "<value>".cyan(),
-        "trace".blue(),
-        "add".bold(),
-        "logout".bold(),
-        "Ctrl + d".bold(),
-        "list".bold(),
-        "usage".bold(),
-        "info".bold(),
-        "ll".bold(),
-        "<prefix>".cyan(),
-        "rb".bold(), //41
-    );
-    usage
-}
-
-pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &mut String) {
-    debug!("===== do command: {} =====", command);
-    if command.starts_with("la") {
-        match handler.la() {
+pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: Option<S3rsCmd>) {
+    debug!("===== do command: {:?} =====", command);
+    match command {
+        Some(S3rsCmd::ListAll) => match handler.la() {
             Err(e) => println!("{}", e),
             Ok(v) => {
                 for o in v {
@@ -176,9 +291,8 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
                     println!("{}", String::from(o));
                 }
             }
-        };
-    } else if command.starts_with("ls") {
-        match handler.ls(command.split_whitespace().nth(1)) {
+        },
+        Some(S3rsCmd::List { uri }) => match handler.ls(uri.as_deref()) {
             Err(e) => println!("{}", e),
             Ok(v) => {
                 for o in v {
@@ -186,244 +300,261 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: &
                     println!("{}", String::from(o));
                 }
             }
-        };
-    } else if command.starts_with("ll") {
-        let r = match command.split_whitespace().nth(1) {
-            Some(b) => handler.ls(Some(b)),
-            None => handler.la(),
-        };
-        let size_formatter = make_format_i(DECIMAL);
-        match r {
-            Err(e) => println!("{}", e),
-            Ok(v) => {
-                println!("STORAGE CLASS\tMODIFIED TIME\t\t\tETAG\t\t\t\t\tSIZE\tKEY",);
-                for o in v {
-                    debug!("{:?}", o);
-                    println!(
-                        "{}\t{}\t{}\t{}\t{}",
-                        o.storage_class.clone().unwrap_or("        ".to_string()),
-                        o.mtime
-                            .clone()
-                            .unwrap_or("                        ".to_string()),
-                        o.etag
-                            .clone()
-                            .unwrap_or("                                 ".to_string()),
-                        o.size
-                            .map(|s| size_formatter(s))
-                            .unwrap_or_else(|| "".to_string()),
-                        String::from(o)
-                    );
+        },
+        Some(S3rsCmd::Detail { uri }) => {
+            let r = match uri {
+                Some(b) => handler.ls(Some(&b)),
+                None => handler.la(),
+            };
+            let size_formatter = make_format_i(DECIMAL);
+            match r {
+                Err(e) => println!("{}", e),
+                Ok(v) => {
+                    println!("STORAGE CLASS\tMODIFIED TIME\t\t\tETAG\t\t\t\t\tSIZE\tKEY",);
+                    for o in v {
+                        debug!("{:?}", o);
+                        println!(
+                            "{}\t{}\t{}\t{}\t{}",
+                            o.storage_class.clone().unwrap_or("        ".to_string()),
+                            o.mtime
+                                .clone()
+                                .unwrap_or("                        ".to_string()),
+                            o.etag
+                                .clone()
+                                .unwrap_or("                                 ".to_string()),
+                            o.size
+                                .map(|s| size_formatter(s))
+                                .unwrap_or_else(|| "".to_string()),
+                            String::from(o)
+                        );
+                    }
                 }
+            };
+        }
+        Some(S3rsCmd::Put { uri, file }) => {
+            #[cfg(feature = "async")]
+            {
+                let rt = Runtime::new().unwrap();
+                let file_path = &file;
+                let mut s3_object: S3Object = (&*uri).into();
+                if s3_object.key.is_none() {
+                    s3_object.key = Some(
+                        Path::new(file_path)
+                            .file_name()
+                            .map(|s| format!("/{}", s.to_string_lossy()))
+                            .unwrap_or_else(|| "/".to_string()),
+                    )
+                }
+                let s3_pool = S3Pool::from(&*handler);
+                rt.block_on(async {
+                    match s3_pool.resource(s3_object).upload_file(file_path).await {
+                        Err(e) => println!("{}", e),
+                        Ok(_) => println!("upload completed"),
+                    };
+                });
             }
-        };
-    } else if command.starts_with("put") {
-        #[cfg(feature = "async")]
-        {
-            let rt = Runtime::new().unwrap();
-            let file_path = command.split_whitespace().nth(1).unwrap_or("");
-            let mut s3_object: S3Object = command.split_whitespace().nth(2).unwrap_or("").into();
-            if s3_object.key.is_none() {
-                s3_object.key = Some(
-                    Path::new(file_path)
-                        .file_name()
-                        .map(|s| format!("/{}", s.to_string_lossy()))
-                        .unwrap_or_else(|| "/".to_string()),
-                )
+
+            #[cfg(not(feature = "async"))]
+            match handler.put(&file, &uri) {
+                Err(e) => println!("{}", e),
+                Ok(_) => println!("upload completed"),
+            };
+        }
+        Some(S3rsCmd::Get { uri, file }) => {
+            #[cfg(feature = "async")]
+            {
+                let s3_pool = S3Pool::from(&*handler);
+                let s3_object: S3Object = (&*uri).into();
+                if s3_object.key.is_none() {
+                    println!("please specify the object you want to download");
+                    return;
+                }
+
+                let rt = Runtime::new().unwrap();
+                rt.block_on(async {
+                    match s3_pool
+                        .resource(s3_object)
+                        .download_file(file.as_deref().unwrap_or(""))
+                        .await
+                    {
+                        Err(e) => println!("{}", e),
+                        Ok(_) => println!("download completed"),
+                    };
+                });
             }
-            let s3_pool = S3Pool::from(&*handler);
-            rt.block_on(async {
-                match s3_pool.resource(s3_object).upload_file(file_path).await {
-                    Err(e) => println!("{}", e),
-                    Ok(_) => println!("upload completed"),
+
+            #[cfg(not(feature = "async"))]
+            match handler.get(uri.as_dref().file) {
+                Err(e) => println!("{}", e),
+                Ok(_) => println!("download completed"),
+            };
+        }
+        Some(S3rsCmd::Cat { uri }) => {
+            if let Ok(o) = handler.cat(&uri) {
+                println!("{}", o.1.unwrap_or("".to_string()));
+            } else {
+                error!("can not cat the object");
+            }
+        }
+        Some(S3rsCmd::Del { uri, marker }) | Some(S3rsCmd::Rm { uri, marker }) => {
+            let target = &uri;
+            let mut headers = Vec::new();
+            let mut iter = marker.as_deref().unwrap_or("").split_whitespace();
+            loop {
+                match iter.next() {
+                    Some(header_pair) => match header_pair.find(':') {
+                        Some(_) => headers.push((
+                            header_pair.split(':').nth(0).unwrap(),
+                            header_pair.split(':').nth(1).unwrap(),
+                        )),
+                        None => headers.push((&header_pair, "")),
+                    },
+                    None => {
+                        break;
+                    }
                 };
-            });
-        }
-
-        #[cfg(not(feature = "async"))]
-        match handler.put(
-            command.split_whitespace().nth(1).unwrap_or(""),
-            command.split_whitespace().nth(2).unwrap_or(""),
-        ) {
-            Err(e) => println!("{}", e),
-            Ok(_) => println!("upload completed"),
-        };
-    } else if command.starts_with("get") {
-        #[cfg(feature = "async")]
-        {
-            let s3_pool = S3Pool::from(&*handler);
-            let s3_object: S3Object = command.split_whitespace().nth(1).unwrap_or("").into();
-            if s3_object.key.is_none() {
-                println!("please specify the object you want to download");
-                return;
             }
-
-            let rt = Runtime::new().unwrap();
-            rt.block_on(async {
-                match s3_pool
-                    .resource(s3_object)
-                    .download_file(command.split_whitespace().nth(2).unwrap_or(""))
-                    .await
-                {
-                    Err(e) => println!("{}", e),
-                    Ok(_) => println!("download completed"),
+            match handler.del_with_flag(target, &mut headers) {
+                Err(e) => println!("{}", e),
+                Ok(_) => println!("deletion completed"),
+            }
+        }
+        Some(S3rsCmd::Tag {
+            action: TagAction::List,
+            uri,
+            ..
+        }) => {
+            if let Err(e) = handler.list_tag(&uri) {
+                println!("{}", e);
+            }
+        }
+        Some(S3rsCmd::Tag {
+            action: TagAction::Add,
+            uri,
+            tags,
+        }) => {
+            let mut iter = tags.iter();
+            let mut tags_vec = Vec::new();
+            loop {
+                match iter.next() {
+                    Some(kv_pair) => match kv_pair.find('=') {
+                        Some(_) => tags_vec.push((
+                            kv_pair.split('=').nth(0).unwrap(),
+                            kv_pair.split('=').nth(1).unwrap(),
+                        )),
+                        None => tags_vec.push((&kv_pair, "")),
+                    },
+                    None => {
+                        break;
+                    }
                 };
-            });
-        }
-
-        #[cfg(not(feature = "async"))]
-        match handler.get(
-            command.split_whitespace().nth(1).unwrap_or(""),
-            command.split_whitespace().nth(2),
-        ) {
-            Err(e) => println!("{}", e),
-            Ok(_) => println!("download completed"),
-        };
-    } else if command.starts_with("cat") {
-        if let Ok(o) = handler.cat(command.split_whitespace().nth(1).unwrap_or("")) {
-            println!("{}", o.1.unwrap_or("".to_string()));
-        } else {
-            error!("can not cat the object");
-        }
-    } else if command.starts_with("del") || command.starts_with("rm") {
-        let mut iter = command.split_whitespace();
-        let target = iter.nth(1).unwrap_or("");
-        let mut headers = Vec::new();
-        loop {
-            match iter.next() {
-                Some(header_pair) => match header_pair.find(':') {
-                    Some(_) => headers.push((
-                        header_pair.split(':').nth(0).unwrap(),
-                        header_pair.split(':').nth(1).unwrap(),
-                    )),
-                    None => headers.push((&header_pair, "")),
-                },
-                None => {
-                    break;
-                }
-            };
-        }
-        match handler.del_with_flag(target, &mut headers) {
-            Err(e) => println!("{}", e),
-            Ok(_) => println!("deletion completed"),
-        }
-    } else if command.starts_with("tag") {
-        let mut iter = command.split_whitespace();
-        let action = iter.nth(1).unwrap_or("");
-        let target = iter.nth(0).unwrap_or("");
-        let mut tags = Vec::new();
-        loop {
-            match iter.next() {
-                Some(kv_pair) => match kv_pair.find('=') {
-                    Some(_) => tags.push((
-                        kv_pair.split('=').nth(0).unwrap(),
-                        kv_pair.split('=').nth(1).unwrap(),
-                    )),
-                    None => tags.push((&kv_pair, "")),
-                },
-                None => {
-                    break;
-                }
-            };
-        }
-        match action {
-            "add" | "put" => match handler.add_tag(target, &tags) {
-                Err(e) => println!("{}", e),
-                Ok(_) => println!("tag completed"),
-            },
-            "del" | "rm" => match handler.del_tag(target) {
-                Err(e) => println!("{}", e),
-                Ok(_) => println!("tag removed"),
-            },
-            "ls" | "list" => match handler.list_tag(target) {
-                Err(e) => println!("{}", e),
-                Ok(_) => {}
-            },
-            _ => println!("only support these tag actions: ls, add, put, del, rm"),
-        }
-    } else if command.starts_with("usage") {
-        let mut iter = command.split_whitespace();
-        let target = iter.nth(1).unwrap_or("");
-        let mut options = Vec::new();
-        loop {
-            match iter.next() {
-                Some(kv_pair) => match kv_pair.find('=') {
-                    Some(_) => options.push((
-                        kv_pair.split('=').nth(0).unwrap(),
-                        kv_pair.split('=').nth(1).unwrap(),
-                    )),
-                    None => options.push((&kv_pair, "")),
-                },
-                None => {
-                    break;
-                }
-            };
-        }
-        match handler.usage(target, &options) {
-            Err(e) => println!("{}", e),
-            Ok(_) => {}
-        }
-    } else if command.starts_with("mb") {
-        print_if_error(handler.mb(command.split_whitespace().nth(1).unwrap_or("")));
-    } else if command.starts_with("rb") {
-        print_if_error(handler.rb(command.split_whitespace().nth(1).unwrap_or("")));
-    } else if command.starts_with("/") {
-        match handler.url_command(&command) {
-            Err(e) => println!("{}", e),
-            Ok(_) => {}
-        };
-    } else if command.starts_with("info") {
-        let target = command.split_whitespace().nth(1).unwrap_or("");
-        let caps;
-        let bucket = if target.starts_with("s3://") || target.starts_with("S3://") {
-            let re = Regex::new(S3_FORMAT).unwrap();
-            caps = re
-                .captures(command.split_whitespace().nth(1).unwrap_or(""))
-                .expect("S3 object format error.");
-            &caps["bucket"]
-        } else {
-            target
-        };
-        println!("{}", "location:".yellow().bold());
-        let _ = handler.url_command(format!("/{}?location", bucket).as_str());
-        println!("\n{}", "acl:".yellow().bold());
-        let _ = handler.url_command(format!("/{}?acl", bucket).as_str());
-        println!("\n{}", "versioning:".yellow().bold());
-        let _ = handler.url_command(format!("/{}?versioning", bucket).as_str());
-        match s3_type.as_str() {
-            "ceph" => {
-                println!("\n{}", "version:".yellow().bold());
-                let _ = handler.url_command(format!("/{}?version", bucket).as_str());
-                println!("\n{}", "uploads:".yellow().bold());
-                let _ = handler.url_command(format!("/{}?uploads", bucket).as_str());
             }
-            "aws" | _ => {}
+            if let Err(e) = handler.add_tag(&uri, &tags_vec) {
+                println!("{}", e);
+            }
         }
-    } else if command.starts_with("s3_type") {
-        handler.change_s3_type(&command);
-    } else if command.starts_with("auth_type") {
-        handler.change_auth_type(&command);
-    } else if command.starts_with("format") {
-        handler.change_format_type(&command);
-    } else if command.starts_with("url_style") {
-        handler.change_url_style(&command);
-    } else if command.starts_with("log") {
-        change_log_type(&command);
-    } else if command.starts_with("exit") || command.starts_with("quit") {
-        println!("Thanks for using, cya~");
-    } else if command.starts_with("help") {
-        println!(
-            r#"
-S3RS COMMAND:"#
-        );
-        println!("{}", common_usage());
-        secret::print_usage();
-        println!(
-            "If you have any issue, please submit to here https://github.com/yanganto/s3rs/issues"
-        );
-    } else {
-        println!(
-            "command {} not found, help for usage or exit for quit",
-            command
-        );
+        Some(S3rsCmd::Tag {
+            action: TagAction::Delete,
+            uri,
+            ..
+        }) => {
+            if let Err(e) = handler.del_tag(&uri) {
+                println!("{}", e);
+            }
+        }
+        Some(S3rsCmd::Usage { bucket, options }) => {
+            let mut iter = options.as_deref().unwrap_or("").split_whitespace();
+            let mut options_vec = Vec::new();
+            loop {
+                match iter.next() {
+                    Some(kv_pair) => match kv_pair.find('=') {
+                        Some(_) => options_vec.push((
+                            kv_pair.split('=').nth(0).unwrap(),
+                            kv_pair.split('=').nth(1).unwrap(),
+                        )),
+                        None => options_vec.push((&kv_pair, "")),
+                    },
+                    None => {
+                        break;
+                    }
+                };
+            }
+            if let Err(e) = handler.usage(&bucket, &options_vec) {
+                println!("{}", e);
+            }
+        }
+        Some(S3rsCmd::CreateBucket { bucket }) => {
+            print_if_error(handler.mb(&bucket));
+        }
+        Some(S3rsCmd::DeleteBucket { bucket }) => {
+            print_if_error(handler.rb(&bucket));
+        }
+        Some(S3rsCmd::Query { url }) => {
+            if let Err(e) = handler.url_command(&url) {
+                println!("{}", e);
+            }
+        }
+        Some(S3rsCmd::Info { bucket }) => {
+            let caps;
+            let bucket = if bucket.starts_with("s3://") || bucket.starts_with("S3://") {
+                let re = Regex::new(S3_FORMAT).unwrap();
+                caps = re.captures(&bucket).expect("S3 object format error.");
+                &caps["bucket"]
+            } else {
+                &bucket
+            };
+            println!("{}", "location:".yellow().bold());
+            let _ = handler.url_command(format!("/{}?location", bucket).as_str());
+            println!("\n{}", "acl:".yellow().bold());
+            let _ = handler.url_command(format!("/{}?acl", bucket).as_str());
+            println!("\n{}", "versioning:".yellow().bold());
+            let _ = handler.url_command(format!("/{}?versioning", bucket).as_str());
+            match s3_type.as_str() {
+                "ceph" => {
+                    println!("\n{}", "version:".yellow().bold());
+                    let _ = handler.url_command(format!("/{}?version", bucket).as_str());
+                    println!("\n{}", "uploads:".yellow().bold());
+                    let _ = handler.url_command(format!("/{}?uploads", bucket).as_str());
+                }
+                "aws" | _ => {}
+            }
+        }
+        Some(S3rsCmd::S3Type(t)) => {
+            handler.change_s3_type(t.into());
+        }
+        Some(S3rsCmd::AuthType(t)) => {
+            handler.change_auth_type(t.into());
+        }
+        Some(S3rsCmd::Format(t)) => {
+            handler.change_format_type(t.into());
+        }
+        Some(S3rsCmd::UrlStyle(t)) => {
+            handler.change_url_style(t.into());
+        }
+        Some(S3rsCmd::Log(t)) => {
+            change_log_type(&t);
+        }
+        None | Some(S3rsCmd::Logout) | Some(S3rsCmd::Quit) => (), // handle in main loop
+        Some(S3rsCmd::Help) => {
+            let c = Command::new(
+                std::env::args()
+                    .nth(0)
+                    .expect("fail to get execute program"),
+            )
+            .args(["-h"])
+            .output()
+            .expect("failed to execute program for usage");
+            let usage = unsafe { std::str::from_utf8_unchecked(&c.stdout) };
+            let mut after_match = false;
+            let re = Regex::new("SUBCOMMANDS:").unwrap();
+            for line in usage.split("\n") {
+                if after_match {
+                    println!("{}", line);
+                }
+                if !after_match && re.is_match(line) {
+                    after_match = true;
+                }
+            }
+        }
     }
 }

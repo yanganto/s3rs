@@ -39,7 +39,7 @@ expect $prompt
 spawn target/debug/s3rs --config=$config tag add s3://$bucket/test a=1 b=2
 
 expect $prompt
-spawn target/debug/s3rs --config=$config  tag ls s3://$bucket/test
+spawn target/debug/s3rs --config=$config tag ls s3://$bucket/test
 
 expect $prompt
 spawn target/debug/s3rs --config=$config tag del s3://$bucket/test
