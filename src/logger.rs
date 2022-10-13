@@ -1,10 +1,10 @@
+use clap::ValueEnum;
 use colored::{self, *};
 use log::{Level, LevelFilter, Metadata, Record};
-use structopt::StructOpt;
 
 pub struct Logger;
 
-#[derive(StructOpt, PartialEq, Debug)]
+#[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum LogType {
     Trace,
     Debug,

@@ -8,38 +8,37 @@ use std::path::Path;
 use tokio::runtime::Runtime;
 
 use crate::logger::{change_log_type, LogType};
+use clap::{Parser, ValueEnum};
 use colored::{self, *};
 #[cfg(feature = "async")]
 use s3handler::{none_blocking::primitives::S3Pool, S3Object};
-use structopt::StructOpt;
 
 pub mod secret;
 
 static S3_FORMAT: &'static str =
     r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "s3rs")]
+#[derive(Parser, Debug)]
+#[command(name = "s3rs")]
 pub struct Cli {
     /// Set the name of config file under ~/.config/s3rs, or a config file with fullpath
-    #[structopt(short = "c", long)]
+    #[arg(short, long)]
     pub(crate) config: Option<String>,
 
     /// Set the run time secret to encrypt/decrept your s3config file
-    #[structopt(short = "s", long)]
+    #[arg(short, long)]
     pub(crate) secret: Option<String>,
 
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     pub s3rs_cmd: Option<S3rsCmd>,
 }
 
-#[derive(StructOpt, PartialEq, Debug)]
-#[structopt()]
+#[derive(Parser, PartialEq, Debug)]
 pub enum S3rsCmd {
-    #[structopt(name = "la", about = "list all buckets")]
+    #[command(name = "la", about = "list all buckets")]
     ListAll,
 
-    #[structopt(
+    #[command(
         name = "ls",
         about = r#"list all buckets, or
 list all objects of the bucket, or
@@ -49,7 +48,7 @@ list objects with prefix in the bucket
     )]
     List { uri: Option<String> },
 
-    #[structopt(
+    #[command(
         name = "ll",
         about = r#"list all object detail, or
 list all objects detail of the bucket, or
@@ -59,21 +58,21 @@ list detail of the objects with prefix in the bucket
     )]
     Detail { uri: Option<String> },
 
-    #[structopt(
+    #[command(
         name = "mb",
         about = r#"create bucket
     mb s3://<bucket>"#
     )]
     CreateBucket { bucket: String },
 
-    #[structopt(
+    #[command(
         name = "rb",
         about = r#"delete bucket
     rb s3://<bucket>"#
     )]
     DeleteBucket { bucket: String },
 
-    #[structopt(about = r#"upload the file with specify object name
+    #[command(about = r#"upload the file with specify object name
     put <file> s3://<bucket>/<object>
 upload the file as the same file name
     put <file> s3://<bucket>
@@ -81,7 +80,7 @@ upload a small test text file with specify object name
     put test s3://<bucket>/<object>"#)]
     Put { file: String, uri: String },
 
-    #[structopt(about = r#"download the object
+    #[command(about = r#"download the object
     get s3://<bucket>/<object> <file>
 download the object to current folder
     get s3://<bucket>/<object>
@@ -89,19 +88,19 @@ upload a small test text file with specify object name
     put test s3://<bucket>/<object>"#)]
     Get { uri: String, file: Option<String> },
 
-    #[structopt(about = r#"display the object content
+    #[command(about = r#"display the object content
     cat s3://<bucket>/<object>"#)]
     Cat { uri: String },
 
-    #[structopt(about = r#"delete the object with/out delete marker
+    #[command(about = r#"delete the object with/out delete marker
     del s3://<bucket>/<object> [delete-marker:true]"#)]
     Del { uri: String, marker: Option<String> },
 
-    #[structopt(about = r#"delete the object with/out delete marker
+    #[command(about = r#"delete the object with/out delete marker
     rm s3://<bucket>/<object> [delete-marker:true]"#)]
     Rm { uri: String, marker: Option<String> },
 
-    #[structopt(about = r#"tag operations
+    #[command(about = r#"tag operations
 list tags of the object
     tag ls/list s3://<bucket>/<object>
 add tags to the object
@@ -109,110 +108,97 @@ add tags to the object
 remove tags from the object
     tag del/rm s3://<bucket>/<object>"#)]
     Tag {
+        #[arg(value_enum)]
         action: TagAction,
         uri: String,
         tags: Vec<String>,
     },
 
-    #[structopt(
+    #[command(
         name = "/",
         about = r#"get uri command
     /<uri>?<query string>"#
     )]
     Query { url: String },
 
-    #[structopt(about = r#"change the log level
+    #[command(about = r#"change the log level
 trace for every thing including request auth detail
 debug for request header, status code, raw body
 info for request http response
 error is default
     log trace/trace/debug/info/error"#)]
-    Log(LogType),
+    Log {
+        #[arg(value_enum)]
+        log_type: LogType,
+    },
 
-    #[structopt(
+    #[command(
         name = "s3_type",
         about = r#"change the auth type and format for different S3 service
     s3_type aws/ceph"#
     )]
-    S3Type(S3Type),
+    S3Type {
+        #[arg(value_enum)]
+        s3_type: S3Type,
+    },
 
-    #[structopt(
+    #[command(
         name = "auth_type",
         about = r#"change the auth type
     auth_type aws2/aws4"#
     )]
-    AuthType(AuthType),
+    AuthType {
+        #[arg(value_enum)]
+        auth_type: AuthType,
+    },
 
-    #[structopt(about = r#"change the request format
+    #[command(about = r#"change the request format
     format xml/json"#)]
-    Format(AuthType),
+    Format {
+        #[arg(value_enum)]
+        format_type: FormatType,
+    },
 
-    #[structopt(about = r#"change the request url style
+    #[command(about = r#"change the request url style
     url-style path/host"#)]
-    UrlStyle(AuthType),
+    UrlStyle {
+        #[arg(value_enum)]
+        url_style: UrlStyle,
+    },
 
-    #[structopt(name = "logout/Ctrl + d", about = "logout and reselect account")]
+    #[command(name = "logout/Ctrl + d", about = "logout and reselect account")]
     Logout,
 
-    #[structopt(about = r#"show the usage of the bucket (ceph admin only)
+    #[command(about = r#"show the usage of the bucket (ceph admin only)
     usage s3://<bucket>"#)]
     Usage {
         bucket: String,
         options: Option<String>,
     },
 
-    #[structopt(
+    #[command(
         about = r#"show following the bucket information, acl(ceph, aws), location(ceph, aws), versioning(ceph, aws), uploads(ceph), version(ceph)
     info s3://<bucket>"#
     )]
     Info { bucket: String },
 
-    #[structopt(name = "quit/exit", about = "quit the programe")]
+    #[command(name = "quit/exit", about = "quit the programe")]
     Quit,
-
-    #[structopt(name = "help", about = "show s3 command usage")]
-    Help,
+    // #[command(name = "help", about = "show s3 command usage")]
+    // Help,
 }
 
-#[derive(StructOpt, PartialEq, Debug)]
+#[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum TagAction {
     List,
+    Ls,
     Add,
-    Delete,
+    Put,
+    Del,
+    Rm,
 }
 
-impl std::str::FromStr for TagAction {
-    type Err = Box<dyn std::error::Error>;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "list" | "ls" => Ok(TagAction::List),
-            "add" | "put" => Ok(TagAction::Add),
-            "del" | "rm" => Ok(TagAction::Delete),
-            _ => {
-                println!("only support these tag actions: list, ls, add, put, del, rm");
-                Err("Unknown tag action".into())
-            }
-        }
-    }
-}
-
-impl std::fmt::Display for TagAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TagAction::List => {
-                write!(f, "list tag")
-            }
-            TagAction::Add => {
-                write!(f, "add tag")
-            }
-            TagAction::Delete => {
-                write!(f, "delete tag")
-            }
-        }
-    }
-}
-
-#[derive(StructOpt, PartialEq, Debug)]
+#[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum S3Type {
     AWS,
     CEPH,
@@ -227,7 +213,7 @@ impl Into<&'static str> for S3Type {
     }
 }
 
-#[derive(StructOpt, PartialEq, Debug)]
+#[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum AuthType {
     AWS2,
     AWS4,
@@ -242,7 +228,7 @@ impl Into<&'static str> for AuthType {
     }
 }
 
-#[derive(StructOpt, PartialEq, Debug)]
+#[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum FormatType {
     XML,
     JSON,
@@ -257,7 +243,7 @@ impl Into<&'static str> for FormatType {
     }
 }
 
-#[derive(StructOpt, PartialEq, Debug)]
+#[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum UrlStyle {
     Path,
     Host,
@@ -422,6 +408,11 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
             action: TagAction::List,
             uri,
             ..
+        })
+        | Some(S3rsCmd::Tag {
+            action: TagAction::Ls,
+            uri,
+            ..
         }) => {
             if let Err(e) = handler.list_tag(&uri) {
                 println!("{}", e);
@@ -429,6 +420,11 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
         }
         Some(S3rsCmd::Tag {
             action: TagAction::Add,
+            uri,
+            tags,
+        })
+        | Some(S3rsCmd::Tag {
+            action: TagAction::Put,
             uri,
             tags,
         }) => {
@@ -453,7 +449,12 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
             }
         }
         Some(S3rsCmd::Tag {
-            action: TagAction::Delete,
+            action: TagAction::Del,
+            uri,
+            ..
+        })
+        | Some(S3rsCmd::Tag {
+            action: TagAction::Rm,
             uri,
             ..
         }) => {
@@ -518,38 +519,21 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
                 "aws" | _ => {}
             }
         }
-        Some(S3rsCmd::S3Type(t)) => {
-            handler.change_s3_type(t.into());
+        Some(S3rsCmd::S3Type { s3_type }) => {
+            handler.change_s3_type(s3_type.into());
         }
-        Some(S3rsCmd::AuthType(t)) => {
-            handler.change_auth_type(t.into());
+        Some(S3rsCmd::AuthType { auth_type }) => {
+            handler.change_auth_type(auth_type.into());
         }
-        Some(S3rsCmd::Format(t)) => {
-            handler.change_format_type(t.into());
+        Some(S3rsCmd::Format { format_type }) => {
+            handler.change_format_type(format_type.into());
         }
-        Some(S3rsCmd::UrlStyle(t)) => {
-            handler.change_url_style(t.into());
+        Some(S3rsCmd::UrlStyle { url_style }) => {
+            handler.change_url_style(url_style.into());
         }
-        Some(S3rsCmd::Log(t)) => {
-            change_log_type(&t);
+        Some(S3rsCmd::Log { log_type }) => {
+            change_log_type(&log_type);
         }
         None | Some(S3rsCmd::Logout) | Some(S3rsCmd::Quit) => (), // handle in main loop
-        Some(S3rsCmd::Help) => {
-            let mut usage = Vec::<u8>::new();
-            let app = <S3rsCmd as StructOpt>::clap();
-            app.write_help(&mut usage)
-                .expect("fail to get help of program");
-            let usage = unsafe { std::str::from_utf8_unchecked(&usage) };
-            let mut after_match = false;
-            let re = Regex::new("SUBCOMMANDS:").unwrap();
-            for line in usage.split("\n") {
-                if after_match {
-                    println!("{}", line);
-                }
-                if !after_match && re.is_match(line) {
-                    after_match = true;
-                }
-            }
-        }
     }
 }
