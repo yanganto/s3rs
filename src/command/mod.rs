@@ -111,7 +111,7 @@ remove tags from the object
     Tag {
         action: TagAction,
         uri: String,
-        tags: Option<String>,
+        tags: Vec<String>,
     },
 
     #[structopt(
@@ -433,7 +433,7 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
             uri,
             tags,
         }) => {
-            let mut iter = tags.as_deref().unwrap_or("").split_whitespace();
+            let mut iter = tags.iter();
             let mut tags_vec = Vec::new();
             loop {
                 match iter.next() {
