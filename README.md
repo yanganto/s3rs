@@ -3,6 +3,7 @@ S3RS
 [![Build Status](https://travis-ci.com/yanganto/s3rs.svg?branch=master)](https://travis-ci.com/yanganto/s3rs)  
 
 an **S3** **R**ich **S**upport client
+- encrypt the config with one time pad, see `secret` command, use `s3rs -s 'your secret worlds' to use the config again.
 - [Download executable](https://github.com/yanganto/s3rs/releases/download/v0.4.5/s3rs-v0.4.5-linux.zip), unzip and ready to go
 - rust edition 2018
 - multi config (please put config files under `~/.config/s3rs`)

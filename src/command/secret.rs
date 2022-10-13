@@ -75,7 +75,9 @@ pub fn do_command(
             error!("There is not secret in runtime");
         }
     } else if command.starts_with("show") {
-        show_config(&config_list[chosen_int], command.strip_prefix("show"));
+        let res = command.strip_prefix("show").unwrap().trim();
+        let may_file = (!res.is_empty()).then(|| res);
+        show_config(&config_list[chosen_int], may_file);
     } else {
         print_usage()
     }
