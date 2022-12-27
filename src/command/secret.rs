@@ -28,13 +28,13 @@ s3rs will use your secret to encrypt/decrypt you s3rs configure file to provide 
 
 {0} {5} {6}
 	Encrypt current setting in to config.
-	{6} is optional, if {6} is not specific, the decrypted config wiil print on screen, else the 
+	{6} is optional, if {6} is not specific, the decrypted config will print on screen, else the
 	encrypted s3rs config file will be generated in S3RS_CONFIG_FOLDER, default is `~/.config/s3rs`
 	if there is any file with the same name, it will be overwritten
 
 {0} {7} {6}
 	Show the current decrypted s3rs config file and print on screen
-	{6} is optional, if {6} is not specific, the pain config wiil print on screen, else the 
+	{6} is optional, if {6} is not specific, the pain config will print on screen, else the
 	pain s3rs config file will be generated in S3RS_CONFIG_FOLDER, default is `~/.config/s3rs`
 	if there is any file with the same name, it will be overwritten
     "#,
@@ -406,7 +406,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_encrpt_and_decrypt_small_str() {
+    fn test_encrypt_and_decrypt_small_str() {
         let message = "a small string";
 
         let key = "A apple a day keep the doctor away"
@@ -425,7 +425,7 @@ mod tests {
         );
     }
     #[test]
-    fn test_encrpt_and_decrypt_super_long_str() {
+    fn test_encrypt_and_decrypt_super_long_str() {
         // 1000 chars, this cipher should works for string less than 8161
         let message = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 

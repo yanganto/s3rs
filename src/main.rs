@@ -77,12 +77,12 @@ fn main() -> io::Result<()> {
 
     let mut config_contents = String::new();
     let mut interactive: bool;
-    let s3rs_config_foler = home_dir().unwrap().join(S3RS_CONFIG_FOLDER); // used > v0.2.3
+    let s3rs_config_folder = home_dir().unwrap().join(S3RS_CONFIG_FOLDER); // used > v0.2.3
     match matches.config {
         Some(ref path) => {
             let mut config_path = path.to_string();
-            if s3rs_config_foler.exists() {
-                for entry in read_dir(s3rs_config_foler).unwrap() {
+            if s3rs_config_folder.exists() {
+                for entry in read_dir(s3rs_config_folder).unwrap() {
                     let p = entry.unwrap().path();
                     if path == p.file_stem().unwrap().to_str().unwrap_or("") {
                         config_path = format!("{}", p.to_str().unwrap_or(""));
@@ -100,8 +100,8 @@ fn main() -> io::Result<()> {
         None => {
             let legacy_s3rs_config = home_dir().unwrap().join(".s3rs.toml"); // used < v0.2.2
 
-            if s3rs_config_foler.exists() {
-                for entry in read_dir(s3rs_config_foler).unwrap() {
+            if s3rs_config_folder.exists() {
+                for entry in read_dir(s3rs_config_folder).unwrap() {
                     let path = entry.unwrap().path();
                     if !path.is_dir() {
                         let mut f = File::open(path).expect("cannot open file");
@@ -116,11 +116,11 @@ fn main() -> io::Result<()> {
                 f.read_to_string(&mut config_contents)
                     .expect("legacy s3rs config is not readable");
             } else {
-                create_dir(s3rs_config_foler.clone()).expect("create config folder fail");
-                let mut f = File::create(s3rs_config_foler.join("aws-example.toml"))
+                create_dir(s3rs_config_folder.clone()).expect("create config folder fail");
+                let mut f = File::create(s3rs_config_folder.join("aws-example.toml"))
                     .expect("Can not write s3rs config example file");
                 let _ = f.write_all(include_str!("../config_examples/aws-example.toml").as_bytes());
-                let mut f = File::create(s3rs_config_foler.join("ceph-example.toml"))
+                let mut f = File::create(s3rs_config_folder.join("ceph-example.toml"))
                     .expect("Can not write s3rs config example file");
                 let _ =
                     f.write_all(include_str!("../config_examples/ceph-example.toml").as_bytes());

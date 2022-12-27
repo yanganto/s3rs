@@ -2,7 +2,7 @@
 name = "s3rs"
 version = "0.4.16"
 authors = ["Antonio Yang <yanganto@gmail.com>"]
-description = "A s3 cli client with multi configs with diffent provider"
+description = "A s3 cli client with multi configs with different provider"
 keywords = ["S3", "Amazon", "CEPH", "AWS"]
 categories = ["command-line-interface"]
 license = "MIT"
