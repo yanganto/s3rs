@@ -1,6 +1,6 @@
 [package]
 name = "s3rs"
-version = "0.4.16"
+version = "0.4.17"
 authors = ["Antonio Yang <yanganto@gmail.com>"]
 description = "A s3 cli client with multi configs with different provider"
 keywords = ["S3", "Amazon", "CEPH", "AWS"]
@@ -23,7 +23,7 @@ http = "0.2.8"
 chrono = "0.4"
 hmac = "0.12.1"
 sha2 = "0.10.2"
-base64 = "0.13.0"
+base64 = "0.20.0"
 hmac-sha1 = "0.1"
 url = "2.1"
 log = "0.4"

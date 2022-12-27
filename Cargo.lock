@@ -64,6 +64,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "base64"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ea22880d78093b0cbe17c89f64a7d457941e65759157ec6cb31a31d652b05e5"
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1061,7 +1067,7 @@ version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "431949c384f4e2ae07605ccaa56d1d9d2ecdb5cadd4f9577ccfab29f2e5149fc"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -1105,7 +1111,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a99be4d8bfddd90f22efc3b470ccd9e728eac22422f3bb3405fac457cef902"
 dependencies = [
  "async-trait",
- "base64",
+ "base64 0.13.0",
  "bytes",
  "chrono",
  "dyn-clone",
@@ -1130,9 +1136,9 @@ dependencies = [
 
 [[package]]
 name = "s3rs"
-version = "0.4.16"
+version = "0.4.17"
 dependencies = [
- "base64",
+ "base64 0.20.0",
  "blake2-rfc",
  "chrono",
  "clap",
