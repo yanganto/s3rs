@@ -118,8 +118,9 @@ Set up the path for rust binary
 The config file will auto setup when binary first time launch
 - `s3rs`
 
-Edit the config file at ~/.s3rs.toml
-- `vi ~/.s3rs.toml`
+
+Run `s3rs`, then it will generate examples under `~/.config/s3rs`
+then edit the config file under ~/.config/s3rs
 
 
 ### Develop
