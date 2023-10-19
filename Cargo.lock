@@ -1208,7 +1208,7 @@ dependencies = [
 
 [[package]]
 name = "s3rs"
-version = "0.4.24"
+version = "0.4.25"
 dependencies = [
  "base64 0.20.0",
  "blake2-rfc",
