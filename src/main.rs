@@ -25,7 +25,7 @@ mod config;
 mod logger;
 
 static MY_LOGGER: Logger = Logger;
-static S3RS_CONFIG_FOLDER: &'static str = ".config/s3rs";
+static S3RS_CONFIG_FOLDER: &str = ".config/s3rs";
 
 fn read_parse<T>(tty: &mut File, prompt: &str, min: T, max: T) -> io::Result<T>
 where
@@ -35,7 +35,7 @@ where
     let mut reader = io::BufReader::new(tty);
     let mut result = String::new();
     let _ = reader.read_line(&mut result);
-    match result.replace("\n", "").parse::<T>() {
+    match result.replace('\n', "").parse::<T>() {
         Ok(x) => {
             if x >= min && x <= max {
                 Ok(x)
@@ -56,7 +56,7 @@ fn my_pick_from_list_internal<T: AsRef<str>>(items: &[T], prompt: &str) -> io::R
                 "{1:0$}. {2}\n",
                 pad_len,
                 i + 1,
-                item.as_ref().replace("\n", "")
+                item.as_ref().replace('\n', "")
             )
             .as_bytes(),
         )?
@@ -85,12 +85,12 @@ fn main() -> io::Result<()> {
                 for entry in read_dir(s3rs_config_folder).unwrap() {
                     let p = entry.unwrap().path();
                     if path == p.file_stem().unwrap().to_str().unwrap_or("") {
-                        config_path = format!("{}", p.to_str().unwrap_or(""));
+                        config_path = p.to_str().unwrap_or("").to_string();
                     }
                 }
             };
 
-            let mut f = File::open(&config_path).expect("cannot open file");
+            let mut f = File::open(config_path).expect("cannot open file");
             f.read_to_string(&mut config_contents)
                 .expect("cannot read file");
             interactive = false;
@@ -131,7 +131,7 @@ fn main() -> io::Result<()> {
                 return Ok(());
             }
 
-            if config_contents == "" {
+            if config_contents.is_empty() {
                 println!(
                     "{}",
                     "Lack of config files please put in ~/.config/s3rs".bold()
@@ -225,7 +225,7 @@ fn main() -> io::Result<()> {
                 let mut after_match = false;
                 let re = Regex::new("Commands:").unwrap();
                 let option_re = Regex::new("Options:").unwrap();
-                for line in usage.split("\n") {
+                for line in usage.split('\n') {
                     if option_re.is_match(line) {
                         break;
                     }

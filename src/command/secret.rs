@@ -11,6 +11,7 @@ use s3handler::CredentialConfig;
 
 static FILTER: [u8; 3] = [10, 9, 13];
 
+#[allow(clippy::print_literal)]
 pub fn print_usage() {
     println!(
         r#"
@@ -51,8 +52,8 @@ s3rs will use your secret to encrypt/decrypt you s3rs configure file to provide 
 
 pub fn do_command(
     run_time_secret: &mut Vec<u8>,
-    command: &mut String,
-    config_list: &Vec<CredentialConfig>,
+    command: &mut str,
+    config_list: &[CredentialConfig],
     chosen_int: usize,
 ) {
     if command.starts_with("set") {
@@ -65,7 +66,7 @@ pub fn do_command(
         *run_time_secret = Vec::new();
         println!("The secret is cleared from memory.");
     } else if command.starts_with("encrypt") {
-        if run_time_secret.len() > 0 {
+        if !run_time_secret.is_empty() {
             encrypt_config(
                 run_time_secret,
                 &config_list[chosen_int],
@@ -76,7 +77,7 @@ pub fn do_command(
         }
     } else if command.starts_with("show") {
         let res = command.strip_prefix("show").unwrap().trim();
-        let may_file = (!res.is_empty()).then(|| res);
+        let may_file = (!res.is_empty()).then_some(res);
         show_config(&config_list[chosen_int], may_file);
     } else {
         print_usage()
@@ -88,14 +89,12 @@ pub fn change_secret(run_time_secret: &mut Vec<u8>, command: String, verbose: bo
     let new_secret: Vec<u8> = if command.starts_with("0x") {
         (2..command.len())
             .step_by(2)
-            .map(|i| {
-                return match u8::from_str_radix(&command[i..i + 2], 16) {
-                    Ok(b) => b,
-                    Err(_) => {
-                        error = true;
-                        0u8
-                    }
-                };
+            .map(|i| match u8::from_str_radix(&command[i..i + 2], 16) {
+                Ok(b) => b,
+                Err(_) => {
+                    error = true;
+                    0u8
+                }
             })
             .collect()
     } else {
@@ -104,7 +103,7 @@ pub fn change_secret(run_time_secret: &mut Vec<u8>, command: String, verbose: bo
         for p in command.split_whitespace() {
             secret_phrases.push(p);
         }
-        if secret_phrases.len() == 0 {
+        if secret_phrases.is_empty() {
             error = true;
             Vec::new()
         } else {
@@ -276,37 +275,37 @@ pub fn decrypt_config(run_time_secret: &Vec<u8>, config: &mut CredentialConfig) 
         user,
         ..
     } = config;
-    if access_key.starts_with("0x") {
+    if let Some(access_key) = access_key.strip_prefix("0x") {
         config.access_key = decrypt_by_secret(
             &mut SecretGenerator::new(run_time_secret, "access_key"),
-            access_key[2..].to_string(),
+            access_key.to_string(),
         );
     }
-    if secret_key.starts_with("0x") {
+    if let Some(secret_key) = secret_key.strip_prefix("0x") {
         config.secret_key = decrypt_by_secret(
             &mut SecretGenerator::new(run_time_secret, "secret_key"),
-            secret_key[2..].to_string(),
+            secret_key.to_string(),
         );
     }
-    if host.starts_with("0x") {
+    if let Some(host) = host.strip_prefix("0x") {
         config.host = decrypt_by_secret(
             &mut SecretGenerator::new(run_time_secret, "host"),
-            host[2..].to_string(),
+            host.to_string(),
         );
     }
     if let Some(r) = region {
-        if r.starts_with("0x") {
+        if let Some(r) = r.strip_prefix("0x") {
             config.region = Some(decrypt_by_secret(
                 &mut SecretGenerator::new(run_time_secret, "region"),
-                r[2..].to_string(),
+                r.to_string(),
             ));
         }
     }
     if let Some(u) = user {
-        if u.starts_with("0x") {
+        if let Some(u) = u.strip_prefix("0x") {
             config.user = Some(decrypt_by_secret(
                 &mut SecretGenerator::new(run_time_secret, "user"),
-                u[2..].to_string(),
+                u.to_string(),
             ));
         }
     }
@@ -328,10 +327,9 @@ fn xor_by_secret(secret_generator: &mut SecretGenerator, target: Vec<u8>) -> Str
     }
 
     for b in mixed_target.iter_mut() {
-        *b = *b
-            ^ secret_generator
-                .next()
-                .expect("field to encrypt is too long")
+        *b ^= secret_generator
+            .next()
+            .expect("field to encrypt is too long")
     }
 
     hex::encode(mixed_target)
@@ -340,10 +338,9 @@ fn xor_by_secret(secret_generator: &mut SecretGenerator, target: Vec<u8>) -> Str
 fn decrypt_by_secret(secret_generator: &mut SecretGenerator, target: String) -> String {
     let mut t = hex::decode(target).unwrap_or_default();
     for b in t.iter_mut() {
-        *b = *b
-            ^ secret_generator
-                .next()
-                .expect("field to decrypt is too long")
+        *b ^= secret_generator
+            .next()
+            .expect("field to decrypt is too long")
     }
     let idx = t.iter().position(|&b| b == 128).unwrap_or(0);
     t.rotate_left(idx);
