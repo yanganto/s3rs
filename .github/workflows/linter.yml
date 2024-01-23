@@ -19,11 +19,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: cachix/install-nix-action@v15
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
       - name: Lint Code Base
-        uses: github/super-linter@v5
-        env:
-          VALIDATE_ALL_CODEBASE: false
-          DEFAULT_BRANCH: master
-          VALIDATE_RUST_2018: true
-          VALIDATE_RUST_CLIPPY: true
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: linter
+        run: nix develop -c cargo clippy

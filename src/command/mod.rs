@@ -15,8 +15,7 @@ use s3handler::{none_blocking::primitives::S3Pool, S3Object};
 
 pub mod secret;
 
-static S3_FORMAT: &'static str =
-    r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
+static S3_FORMAT: &str = r#"[sS]3://(?P<bucket>[A-Za-z0-9\-\._]+)(?P<object>[A-Za-z0-9\-\._/]*)"#;
 
 #[derive(Parser, Debug)]
 #[command(name = "s3rs")]
@@ -198,47 +197,50 @@ pub enum TagAction {
     Rm,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum S3Type {
     AWS,
     CEPH,
 }
 
-impl Into<&'static str> for S3Type {
-    fn into(self) -> &'static str {
-        match self {
-            Self::AWS => "aws",
-            Self::CEPH => "ceph",
+impl From<S3Type> for &'static str {
+    fn from(val: S3Type) -> Self {
+        match val {
+            S3Type::AWS => "aws",
+            S3Type::CEPH => "ceph",
         }
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum AuthType {
     AWS2,
     AWS4,
 }
 
-impl Into<&'static str> for AuthType {
-    fn into(self) -> &'static str {
-        match self {
-            Self::AWS2 => "aws2",
-            Self::AWS4 => "aws4",
+impl From<AuthType> for &'static str {
+    fn from(val: AuthType) -> Self {
+        match val {
+            AuthType::AWS2 => "aws2",
+            AuthType::AWS4 => "aws4",
         }
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(ValueEnum, PartialEq, Debug, Clone)]
 pub enum FormatType {
     XML,
     JSON,
 }
 
-impl Into<&'static str> for FormatType {
-    fn into(self) -> &'static str {
-        match self {
-            Self::XML => "xml",
-            Self::JSON => "json",
+impl From<FormatType> for &'static str {
+    fn from(val: FormatType) -> Self {
+        match val {
+            FormatType::XML => "xml",
+            FormatType::JSON => "json",
         }
     }
 }
@@ -249,23 +251,22 @@ pub enum UrlStyle {
     Host,
 }
 
-impl Into<&'static str> for UrlStyle {
-    fn into(self) -> &'static str {
-        match self {
-            Self::Path => "path",
-            Self::Host => "host",
+impl From<UrlStyle> for &'static str {
+    fn from(val: UrlStyle) -> Self {
+        match val {
+            UrlStyle::Path => "path",
+            UrlStyle::Host => "host",
         }
     }
 }
 
 fn print_if_error(result: Result<(), Box<dyn Error>>) {
-    match result {
-        Err(e) => println!("{}", e),
-        Ok(_) => {}
-    };
+    if let Err(e) = result {
+        println!("{}", e)
+    }
 }
 
-pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: Option<S3rsCmd>) {
+pub fn do_command(handler: &mut s3handler::Handler, s3_type: &str, command: Option<S3rsCmd>) {
     debug!("===== do command: {:?} =====", command);
     match command {
         Some(S3rsCmd::ListAll) => match handler.la() {
@@ -308,7 +309,7 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
                                 .clone()
                                 .unwrap_or("                                 ".to_string()),
                             o.size
-                                .map(|s| size_formatter(s))
+                                .map(&size_formatter)
                                 .unwrap_or_else(|| "".to_string()),
                             String::from(o)
                         );
@@ -384,20 +385,14 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
         Some(S3rsCmd::Del { uri, marker }) | Some(S3rsCmd::Rm { uri, marker }) => {
             let target = &uri;
             let mut headers = Vec::new();
-            let mut iter = marker.as_deref().unwrap_or("").split_whitespace();
-            loop {
-                match iter.next() {
-                    Some(header_pair) => match header_pair.find(':') {
-                        Some(_) => headers.push((
-                            header_pair.split(':').nth(0).unwrap(),
-                            header_pair.split(':').nth(1).unwrap(),
-                        )),
-                        None => headers.push((&header_pair, "")),
-                    },
-                    None => {
-                        break;
-                    }
-                };
+            for header_pair in marker.as_deref().unwrap_or("").split_whitespace() {
+                match header_pair.find(':') {
+                    Some(_) => headers.push((
+                        header_pair.split(':').next().unwrap_or_default(),
+                        header_pair.split(':').nth(1).unwrap_or_default(),
+                    )),
+                    None => headers.push((&header_pair, "")),
+                }
             }
             match handler.del_with_flag(target, &mut headers) {
                 Err(e) => println!("{}", e),
@@ -428,21 +423,15 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
             uri,
             tags,
         }) => {
-            let mut iter = tags.iter();
             let mut tags_vec = Vec::new();
-            loop {
-                match iter.next() {
-                    Some(kv_pair) => match kv_pair.find('=') {
-                        Some(_) => tags_vec.push((
-                            kv_pair.split('=').nth(0).unwrap(),
-                            kv_pair.split('=').nth(1).unwrap(),
-                        )),
-                        None => tags_vec.push((&kv_pair, "")),
-                    },
-                    None => {
-                        break;
-                    }
-                };
+            for kv_pair in tags.iter() {
+                match kv_pair.find('=') {
+                    Some(_) => tags_vec.push((
+                        kv_pair.split('=').next().unwrap_or_default(),
+                        kv_pair.split('=').nth(1).unwrap_or_default(),
+                    )),
+                    None => tags_vec.push((&kv_pair, "")),
+                }
             }
             if let Err(e) = handler.add_tag(&uri, &tags_vec) {
                 println!("{}", e);
@@ -463,21 +452,15 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
             }
         }
         Some(S3rsCmd::Usage { bucket, options }) => {
-            let mut iter = options.as_deref().unwrap_or("").split_whitespace();
             let mut options_vec = Vec::new();
-            loop {
-                match iter.next() {
-                    Some(kv_pair) => match kv_pair.find('=') {
-                        Some(_) => options_vec.push((
-                            kv_pair.split('=').nth(0).unwrap(),
-                            kv_pair.split('=').nth(1).unwrap(),
-                        )),
-                        None => options_vec.push((&kv_pair, "")),
-                    },
-                    None => {
-                        break;
-                    }
-                };
+            for kv_pair in options.as_deref().unwrap_or("").split_whitespace() {
+                match kv_pair.find('=') {
+                    Some(_) => options_vec.push((
+                        kv_pair.split('=').next().unwrap_or_default(),
+                        kv_pair.split('=').nth(1).unwrap_or_default(),
+                    )),
+                    None => options_vec.push((&kv_pair, "")),
+                }
             }
             if let Err(e) = handler.usage(&bucket, &options_vec) {
                 println!("{}", e);
@@ -509,14 +492,11 @@ pub fn do_command(handler: &mut s3handler::Handler, s3_type: &String, command: O
             let _ = handler.url_command(format!("/{}?acl", bucket).as_str());
             println!("\n{}", "versioning:".yellow().bold());
             let _ = handler.url_command(format!("/{}?versioning", bucket).as_str());
-            match s3_type.as_str() {
-                "ceph" => {
-                    println!("\n{}", "version:".yellow().bold());
-                    let _ = handler.url_command(format!("/{}?version", bucket).as_str());
-                    println!("\n{}", "uploads:".yellow().bold());
-                    let _ = handler.url_command(format!("/{}?uploads", bucket).as_str());
-                }
-                "aws" | _ => {}
+            if s3_type == "ceph" {
+                println!("\n{}", "version:".yellow().bold());
+                let _ = handler.url_command(format!("/{}?version", bucket).as_str());
+                println!("\n{}", "uploads:".yellow().bold());
+                let _ = handler.url_command(format!("/{}?uploads", bucket).as_str());
             }
         }
         Some(S3rsCmd::S3Type { s3_type }) => {
