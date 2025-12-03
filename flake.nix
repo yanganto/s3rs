@@ -1,7 +1,7 @@
 {
   description = "A s3 client written in Rust";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11-small";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.dependency-refresh.url = "github:yanganto/dependency-refresh";
 
