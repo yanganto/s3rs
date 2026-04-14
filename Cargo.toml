@@ -36,7 +36,7 @@ s3handler = "0.8.1"
 clap = { version =  "4.4.18", features = ["derive"]}
 hex = "0.4.2"
 blake2-rfc = "0.2"
-rand = "0.8.5"
+rand = "0.9.3"
 humansize = "2.0"
 tokio = { version = "1", optional = true }
 
