@@ -6,7 +6,7 @@ use std::fs;
 use blake2_rfc::blake2b::blake2b;
 use dirs::home_dir;
 use hex;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use s3handler::CredentialConfig;
 
 static FILTER: [u8; 3] = [10, 9, 13];
@@ -312,16 +312,16 @@ pub fn decrypt_config(run_time_secret: &Vec<u8>, config: &mut CredentialConfig) 
 }
 
 fn xor_by_secret(secret_generator: &mut SecretGenerator, target: Vec<u8>) -> String {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let target_len = target.len();
     let mut target = target;
     let mut mixed_target = vec![128];
     mixed_target.append(&mut target);
-    mixed_target.rotate_left(rng.gen_range(0..target_len));
+    mixed_target.rotate_left(rng.random_range(0..target_len));
 
     if mixed_target.len() < 256 {
         for _ in 0..(256 - mixed_target.len()) {
-            let r = rng.gen_range(0..mixed_target.len());
+            let r = rng.random_range(0..mixed_target.len());
             mixed_target.insert(r, *FILTER.iter().nth(r % FILTER.len()).unwrap());
         }
     }
