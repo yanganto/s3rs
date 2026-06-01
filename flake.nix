@@ -1,7 +1,7 @@
 {
   description = "A s3 client written in Rust";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11-small";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05-small";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:
@@ -20,7 +20,7 @@
         packages.${system}.s3rs = pkgs.rustPlatform.buildRustPackage {
           name = "s3rs";
           src = self;
-          cargoHash = "sha256-k/RrCgPlhPMpkb6qxENwEegZer5MYwMRtjqpGR4Jp20=";
+          cargoHash = "sha256-nOqBNX/iKfprynaUueJ9kZpwbXEMSYA9mnUmCR8MEIo=";
           buildInputs = [ openssl ];
           nativeBuildInputs = [ pkg-config ];
         };
