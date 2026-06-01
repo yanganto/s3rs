@@ -1,24 +1,15 @@
 {
   description = "A s3 client written in Rust";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11-small";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05-small";
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.dependency-refresh.url = "github:yanganto/dependency-refresh";
 
-  outputs = { self, nixpkgs, flake-utils, dependency-refresh }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
         };
-        dr = dependency-refresh.defaultPackage.${system};
-        updateDependencyScript = pkgs.writeShellScriptBin "update-dependency" ''
-          dr ./Cargo.toml
-          if [ -f "Cargo.toml.old" ]; then
-            rm Cargo.toml.old
-            exit 1
-          fi
-        '';
         publishScript = pkgs.writeShellScriptBin "crate-publish" ''
           cargo login $1
           cargo publish
@@ -29,7 +20,7 @@
         packages.${system}.s3rs = pkgs.rustPlatform.buildRustPackage {
           name = "s3rs";
           src = self;
-          cargoHash = "sha256-k/RrCgPlhPMpkb6qxENwEegZer5MYwMRtjqpGR4Jp20=";
+          cargoHash = "sha256-pWtcatoS6hVqYepbWUWT6o3cXqZDIvAltyCGRT9F66w=";
           buildInputs = [ openssl ];
           nativeBuildInputs = [ pkg-config ];
         };
@@ -39,9 +30,7 @@
             openssl
             pkg-config
             rustup
-            dr
             publishScript
-            updateDependencyScript
           ];
         };
       }
