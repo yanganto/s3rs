@@ -3,22 +3,13 @@
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11-small";
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.dependency-refresh.url = "github:yanganto/dependency-refresh";
 
-  outputs = { self, nixpkgs, flake-utils, dependency-refresh }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
         };
-        dr = dependency-refresh.defaultPackage.${system};
-        updateDependencyScript = pkgs.writeShellScriptBin "update-dependency" ''
-          dr ./Cargo.toml
-          if [ -f "Cargo.toml.old" ]; then
-            rm Cargo.toml.old
-            exit 1
-          fi
-        '';
         publishScript = pkgs.writeShellScriptBin "crate-publish" ''
           cargo login $1
           cargo publish
@@ -39,9 +30,7 @@
             openssl
             pkg-config
             rustup
-            dr
             publishScript
-            updateDependencyScript
           ];
         };
       }
