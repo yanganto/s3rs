@@ -1333,7 +1333,7 @@ dependencies = [
 
 [[package]]
 name = "s3rs"
-version = "0.4.36"
+version = "0.4.37"
 dependencies = [
  "base64 0.20.0",
  "blake2-rfc",
@@ -1464,8 +1464,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3bf829a2d51ab4a5ddf1352d8470c140cadc8301b2ae1789db023f01cedd6ba"
 dependencies = [
  "cfg-if",
- "cpufeatures",
- "digest",
+ "cpufeatures 0.2.17",
+ "digest 0.10.7",
 ]
 
 [[package]]
